@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Locali - Sommariva del Bosco</title>
+    <title>News - Sommariva del Bosco</title>
     <style>
         /* Variabili di colore: Modalità Scura (Stile iOS Dark) */
         :root {
@@ -85,6 +85,7 @@
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             padding-left: 10px;
+            overflow: hidden; /* Blocca qualsiasi fuoriuscita dal box */
         }
 
         .fade-out { opacity: 0 !important; }
@@ -97,7 +98,7 @@
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             background-color: var(--widget-border);
-            margin-top: 5px;
+            margin-top: 0px; /* A filo con l'alto */
             transition: border-color 1s ease, background-color 1s ease;
         }
 
@@ -111,27 +112,30 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start; /* ALLINEATO IN ALTO A FILO DELLA FOTO */
             padding-right: 20px;
             height: 480px; 
+            overflow: hidden;
         }
 
         #news-title {
-            font-size: 50px;
+            font-size: 46px; /* Leggermente ottimizzato per lasciare spazio al testo sotto */
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             display: block;
             transition: color 1s ease;
         }
 
         #news-description {
-            font-size: 27px;
+            font-size: 25px;
             color: var(--text-sec);
-            line-height: 1.45;
+            line-height: 1.4;
             display: block;
             transition: color 1s ease;
+            max-height: 160px; /* Limite rigido per evitare lo sforo verticale */
+            overflow: hidden;
         }
 
         #news-source {
@@ -174,13 +178,14 @@
     <div id="widget-container">
         
         <div id="header">
-            <span class="blue-text">SOMMARIVA DEL BOSCO</span> <span class="white-text">- NEWS LOCALI</span>
+            <span class="blue-text">SOMMARIVA DEL BOSCO</span> <span class="white-text">- NEWS</span>
         </div>
         
         <div id="content-area">
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
+                <!-- Controllore di sicurezza per immagini rotte o bloccate -->
                 <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
@@ -196,7 +201,6 @@
 </div>
 
 <script>
-    // Gestione Tema Chiaro/Scuro (Dalle 07:00 alle 18:59 tema chiaro)
     function updateTheme() {
         const hour = new Date().getHours();
         if (hour >= 7 && hour < 19) {
@@ -207,7 +211,7 @@
     }
     
     updateTheme();
-    setInterval(updateTheme, 60000); // Controlla il tema ogni minuto
+    setInterval(updateTheme, 60000);
 
     const rssFeeds = [
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 4 },
@@ -267,30 +271,18 @@
         return false;
     }
 
-    function buildSmartSummary(text) {
+    // RIASSUNTO BREVE E SICURO: Garantisce che il testo grigio chiaro sia corto e non esca dal box
+    function buildShortSummary(text) {
         text = cleanHTML(text);
         text = text.replace(/(\.{3,}|\[\.\.\.\]|…)/g, '').trim(); 
         
         let parts = text.split(/\.\s+/);
         let summary = "";
-        const MAX_CHARS = 250; 
+        const MAX_CHARS = 160; // Testo più corto per rimanere ampiamente dentro il rettangolo
         
         for (let i = 0; i < parts.length; i++) {
             let part = parts[i].trim();
             if (!part) continue;
-            
-            let isLastPart = (i === parts.length - 1);
-            let endsWithPeriod = text.trim().endsWith('.');
-            
-            if (isLastPart && !endsWithPeriod) {
-                if (summary.length > 0) {
-                    break; 
-                } else {
-                    let words = part.split(' ');
-                    summary = words.slice(0, Math.min(words.length, 30)).join(' ') + ".";
-                    break;
-                }
-            }
             
             let sentence = part + ".";
             
@@ -299,11 +291,15 @@
             }
             
             summary += (summary.length > 0 ? " " : "") + sentence;
+            
+            // Ci fermiamo al massimo dopo 2 frasi per garantire che sia compatto
+            if (i >= 1) break;
         }
         
-        return summary.replace(/\.+$/, '.'); 
+        return summary || "Leggi l'articolo completo online.";
     }
 
+    // FILTRO IMMAGINI ANTIDIVIETO / HOTLINKED
     function extractImage(item) {
         let imgUrl = "";
         
@@ -317,7 +313,8 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank/i.test(imgUrl)) {
+        // Se l'immagine manca, è un pixel invisibile, oppure è l'immagine di "hotlinked" bloccata dal giornale
+        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked/i.test(imgUrl)) {
             return "https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
         }
         return imgUrl;
@@ -346,7 +343,7 @@
                         tempNews.push({
                             source: feed.name,
                             title: cleanTitle,
-                            description: buildSmartSummary(cleanText),
+                            description: buildShortSummary(cleanText),
                             image: extractImage(item),
                             pubDate: new Date(item.pubDate)
                         });
