@@ -85,7 +85,7 @@
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             padding-left: 10px;
-            overflow: hidden; /* Blocca qualsiasi fuoriuscita dal box */
+            overflow: hidden; 
         }
 
         .fade-out { opacity: 0 !important; }
@@ -98,7 +98,7 @@
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             background-color: var(--widget-border);
-            margin-top: 0px; /* A filo con l'alto */
+            margin-top: 0px; 
             transition: border-color 1s ease, background-color 1s ease;
         }
 
@@ -112,30 +112,38 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; /* ALLINEATO IN ALTO A FILO DELLA FOTO */
+            justify-content: flex-start; 
             padding-right: 20px;
             height: 480px; 
             overflow: hidden;
         }
 
+        /* Titolo ottimizzato per stare sempre nel box senza sforare */
         #news-title {
-            font-size: 46px; /* Leggermente ottimizzato per lasciare spazio al testo sotto */
+            font-size: 44px; 
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
             margin-bottom: 15px;
-            display: block;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
             transition: color 1s ease;
         }
 
+        /* Descrizione bloccata a un numero sicuro di righe per non uscire mai dal rettangolo */
         #news-description {
-            font-size: 25px;
+            font-size: 24px;
             color: var(--text-sec);
             line-height: 1.4;
-            display: block;
-            transition: color 1s ease;
-            max-height: 160px; /* Limite rigido per evitare lo sforo verticale */
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
             overflow: hidden;
+            transition: color 1s ease;
         }
 
         #news-source {
@@ -185,7 +193,7 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <!-- Controllore di sicurezza per immagini rotte o bloccate -->
+                <!-- Fallback di sicurezza per immagini rotte o bloccate -->
                 <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
@@ -271,35 +279,22 @@
         return false;
     }
 
-    // RIASSUNTO BREVE E SICURO: Garantisce che il testo grigio chiaro sia corto e non esca dal box
-    function buildShortSummary(text) {
+    // Pulizia e formattazione impeccabile del testo descrittivo
+    function buildCleanDescription(text) {
         text = cleanHTML(text);
+        // Rimuove puntini di sospensione e residui anomali
         text = text.replace(/(\.{3,}|\[\.\.\.\]|…)/g, '').trim(); 
-        
-        let parts = text.split(/\.\s+/);
-        let summary = "";
-        const MAX_CHARS = 160; // Testo più corto per rimanere ampiamente dentro il rettangolo
-        
-        for (let i = 0; i < parts.length; i++) {
-            let part = parts[i].trim();
-            if (!part) continue;
-            
-            let sentence = part + ".";
-            
-            if (summary.length > 0 && (summary.length + sentence.length) > MAX_CHARS) {
-                break;
-            }
-            
-            summary += (summary.length > 0 ? " " : "") + sentence;
-            
-            // Ci fermiamo al massimo dopo 2 frasi per garantire che sia compatto
-            if (i >= 1) break;
+        // Corregge errori di punteggiatura tipo ", ." o ",,"
+        text = text.replace(/,\s*\./g, '.');
+        text = text.replace(/\s{2,}/g, ' ');
+
+        if (text.length > 0 && !/[.!?]$/.test(text)) {
+            text += '.';
         }
         
-        return summary || "Leggi l'articolo completo online.";
+        return text;
     }
 
-    // FILTRO IMMAGINI ANTIDIVIETO / HOTLINKED
     function extractImage(item) {
         let imgUrl = "";
         
@@ -313,7 +308,7 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se l'immagine manca, è un pixel invisibile, oppure è l'immagine di "hotlinked" bloccata dal giornale
+        // Filtro per scartare immagini hotlinked bloccate o pixel vuoti
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked/i.test(imgUrl)) {
             return "https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
         }
@@ -334,7 +329,7 @@
                     
                     items.forEach(item => {
                         let rawText = item.content ? item.content : item.description;
-                        let cleanText = cleanHTML(rawText);
+                        let cleanText = buildCleanDescription(rawText);
                         let cleanTitle = formatTitle(item.title, feed.name);
                         
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
@@ -343,7 +338,7 @@
                         tempNews.push({
                             source: feed.name,
                             title: cleanTitle,
-                            description: buildShortSummary(cleanText),
+                            description: cleanText,
                             image: extractImage(item),
                             pubDate: new Date(item.pubDate)
                         });
