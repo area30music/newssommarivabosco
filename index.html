@@ -209,6 +209,13 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
+    // NOTIZIE DI RISERVA (Fallback di sicurezza nel caso in cui il player blocchi le connessioni di rete)
+    const fallbackNews = [
+        { source: "Sommariva News", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
+        { source: "Eventi Locali", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
+        { source: "Notizie del Territorio", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", pubDate: new Date() }
+    ];
+
     let newsItems = [];
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
@@ -259,11 +266,9 @@
         return false;
     }
 
-    // IMMAGINE FISSA "NEWS" (Macchina da scrivere) USATA PER TUTTE LE FOTO BLOCCATE O DI GAZZETTA D'ALBA
     const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
 
     function extractImage(item, sourceName) {
-        // Gazzetta d'Alba blocca i link esterni con l'immagine di stop, forziamo sempre la foto "News"
         if (sourceName === "Gazzetta d'Alba") {
             return NEWS_DEFAULT_IMAGE;
         }
@@ -280,7 +285,6 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se l'immagine manca, è corrotta, è un pixel o contiene blocchi anti-hotlink/stop, usa sempre la foto "News"
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning|default/i.test(imgUrl)) {
             return NEWS_DEFAULT_IMAGE;
         }
@@ -320,14 +324,15 @@
             }
         }
 
-        if (tempNews.length > 0) {
-            tempNews.sort((a, b) => b.pubDate - a.pubDate);
-            newsItems = tempNews.slice(0, 15);
-            currentIndex = 0;
-            showNews();
-        } else {
-            loadingMessage.innerHTML = "Notizie non disponibili al momento.";
+        // Se il lettore ha bloccato tutte le chiamate di rete, usa le notizie di riserva locali
+        if (tempNews.length === 0) {
+            tempNews = fallbackNews;
         }
+
+        tempNews.sort((a, b) => b.pubDate - a.pubDate);
+        newsItems = tempNews.slice(0, 15);
+        currentIndex = 0;
+        showNews();
     }
 
     function showNews() {
@@ -344,7 +349,6 @@
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
 
-            // ADATTATORE DINAMICO FONT: Sfrutta al massimo lo spazio tra le linee rosse
             let len = currentNews.title.length;
             if (len < 35) {
                 elTitle.style.fontSize = "62px"; 
