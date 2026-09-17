@@ -53,12 +53,13 @@
 
         /* Stile del Widget principale */
         #widget-container {
+            position: relative; /* Necessario per posizionare la fonte in basso a destra */
             width: 100%;
             height: 100%;
             background-color: var(--widget-bg);
             border: 2px solid var(--widget-border);
             border-radius: 32px;
-            padding: 45px 55px;
+            padding: 40px 45px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -66,53 +67,49 @@
             transition: all 1s ease;
         }
 
-        /* Intestazione */
+        /* Intestazione su una riga */
         #header {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 30px;
-        }
-
-        #title-main {
-            font-size: 48px;
+            margin-bottom: 40px;
+            font-size: 46px;
             font-weight: 800;
-            color: var(--accent-blue);
             text-transform: uppercase;
             letter-spacing: -1px;
             line-height: 1;
         }
 
-        #title-sub {
-            font-size: 42px;
-            font-weight: 800;
+        #header .blue-text {
+            color: var(--accent-blue);
+        }
+
+        #header .white-text {
             color: var(--text-main);
-            text-transform: uppercase;
-            letter-spacing: -1px;
         }
 
         /* Area contenuti e transizioni */
         #content-area {
             flex: 1;
             display: flex;
-            gap: 50px;
-            align-items: center;
+            gap: 45px; /* Spazio tra foto e testo */
+            align-items: flex-start;
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
+            padding-left: 10px; /* Sposta foto leggermente a sinistra */
         }
 
         .fade-out {
             opacity: 0 !important;
         }
 
-        /* Immagine della notizia */
+        /* Immagine della notizia (più piccola) */
         #news-image-wrapper {
-            width: 480px;
-            height: 380px;
+            width: 400px;
+            height: 300px;
             border-radius: 20px;
             overflow: hidden;
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             background-color: var(--widget-border);
+            margin-top: 10px; /* Allinea leggermente la foto con il testo */
         }
 
         #news-image {
@@ -126,49 +123,59 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
         }
 
-        #news-source {
-            font-size: 26px;
-            font-weight: 700;
-            color: var(--accent-orange);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        #news-source::before {
-            content: "(•)";
-            font-size: 18px;
-            color: var(--text-sec);
-        }
-
+        /* Titolo ingrandito e ottimizzato */
         #news-title {
-            font-size: 46px;
-            font-weight: 700;
+            font-size: 54px;
+            font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
-            margin-bottom: 20px;
-            /* Limita il titolo a max 3 righe */
+            margin-bottom: 25px;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
-            line-clamp: 3; /* Risolve l'avviso di compatibilità */
+            -webkit-line-clamp: 4; /* Fino a 4 righe per il titolo */
+            line-clamp: 4;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
+        /* Descrizione con più righe leggibili */
         #news-description {
             font-size: 28px;
             color: var(--text-sec);
-            line-height: 1.4;
-            /* Limita la descrizione a max 3 righe */
+            line-height: 1.45;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
-            line-clamp: 3; /* Risolve l'avviso di compatibilità */
+            -webkit-line-clamp: 5; /* Ora mostra fino a 5 righe di contenuto */
+            line-clamp: 5;
             -webkit-box-orient: vertical;
             overflow: hidden;
+        }
+
+        /* Etichetta della Fonte spostata in basso a destra del rettangolo */
+        #news-source {
+            position: absolute;
+            bottom: 35px;
+            right: 45px;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        /* Puntino estetico prima della fonte */
+        #news-source::before {
+            content: "(•)";
+            font-size: 20px;
+            color: var(--text-sec);
+        }
+
+        /* Mostra la fonte quando il contenuto è visibile */
+        .show-content {
+            opacity: 1 !important;
         }
 
         #loading-message {
@@ -177,6 +184,7 @@
             text-align: center;
             width: 100%;
             font-weight: 500;
+            margin-top: 100px;
         }
     </style>
 </head>
@@ -184,9 +192,9 @@
 
 <div id="scaler">
     <div id="widget-container">
+        
         <div id="header">
-            <div id="title-main">SOMMARIVA DEL BOSCO</div>
-            <div id="title-sub">NEWS LOCALI</div>
+            <span class="blue-text">SOMMARIVA DEL BOSCO</span> <span class="white-text">- NEWS LOCALI</span>
         </div>
         
         <div id="content-area">
@@ -197,11 +205,14 @@
             </div>
             
             <div id="news-text-wrapper" style="display: none;">
-                <div id="news-source">Fonte</div>
                 <div id="news-title">Titolo</div>
                 <div id="news-description">Descrizione...</div>
             </div>
         </div>
+
+        <!-- Fonte ancorata in basso a destra del widget-container -->
+        <div id="news-source">Fonte</div>
+
     </div>
 </div>
 
@@ -209,7 +220,6 @@
     // Gestione Tema Chiaro/Scuro in base all'ora
     function updateTheme() {
         const hour = new Date().getHours();
-        // Dalle 07:00 alle 18:59 tema chiaro, altrimenti tema scuro
         if (hour >= 7 && hour < 19) {
             document.body.classList.add('light-mode');
         } else {
@@ -217,11 +227,9 @@
         }
     }
     
-    // Controlla il tema all'avvio e poi ogni minuto
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // Fonti Locali Cuneo / Roero / Langhe
     const rssFeeds = [
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml" },
         { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/" },
@@ -235,12 +243,12 @@
     const DISPLAY_DURATION = 30000; // 30 secondi
 
     const contentArea = document.getElementById('content-area');
+    const elSource = document.getElementById('news-source'); // Fonte gestita con una sua transizione
     const loadingMessage = document.getElementById('loading-message');
     const imageWrapper = document.getElementById('news-image-wrapper');
     const textWrapper = document.getElementById('news-text-wrapper');
     
     const elImage = document.getElementById('news-image');
-    const elSource = document.getElementById('news-source');
     const elTitle = document.getElementById('news-title');
     const elDesc = document.getElementById('news-description');
 
@@ -256,7 +264,6 @@
         const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
         let match = imgRegex.exec(item.content || item.description);
         if (match && match[1]) return match[1];
-        // Immagine segnaposto
         return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
     }
 
@@ -270,7 +277,6 @@
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    // Preleva massimo 3 notizie per testata per raggiungere un max di ~15
                     const items = data.items.slice(0, 3); 
                     items.forEach(item => {
                         tempNews.push({
@@ -303,11 +309,12 @@
         const currentNews = newsItems[currentIndex];
         loadingMessage.style.display = 'none';
         
-        // Dissolvenza in uscita
+        // Dissolvenza in uscita sia per l'area contenuto che per la fonte
         contentArea.classList.add('fade-out');
+        elSource.classList.remove('show-content');
 
         setTimeout(() => {
-            // Aggiorna i dati mentre è invisibile
+            // Aggiorna i dati mentre sono invisibili
             elImage.src = currentNews.image;
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
@@ -316,19 +323,18 @@
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
 
-            // Dissolvenza in entrata
+            // Dissolvenza in entrata per contenuto e fonte
             contentArea.classList.remove('fade-out');
+            elSource.classList.add('show-content');
 
             currentIndex++;
             if (currentIndex >= newsItems.length) currentIndex = 0;
             
-        }, 800); // Sincronizzato con il transition del CSS
+        }, 800); 
     }
 
     fetchAllNews();
     setInterval(showNews, DISPLAY_DURATION);
-    
-    // Aggiornamento silenzioso dei feed in background ogni ora
     setInterval(fetchAllNews, 3600000);
 
 </script>
