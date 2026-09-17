@@ -174,7 +174,8 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <img id="news-image" src="" alt="">
+                <!-- Aggiunto onerror: se la foto è rotta o cancellata, mette subito quella di repertorio -->
+                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
             <div id="news-text-wrapper" style="display: none;">
@@ -202,12 +203,12 @@
     setInterval(updateTheme, 60000);
 
     // =======================================================================
-    // IMPOSTAZIONI DEI FEED E DEL PONTE AUTOMATICO
+    // IMPOSTAZIONI DEI FEED - PONTE INTEGRATO
     // =======================================================================
     const rssFeeds = [
-        // Ponte integrato: forza il recupero delle ultime 2 notizie/comunicazioni sul Comune di Sommariva
-        { name: "Comune Sommariva Bosco", url: "https://news.google.com/rss/search?q=Comune+Sommariva+del+Bosco+eventi+OR+cronaca+OR+comunicazione&hl=it&gl=IT&ceid=IT:it", isLocal: true, limit: 2 },
-        // Altre fonti del territorio (langhe, roero, cuneese)
+        // Ponte automatico per prendere solo gli ultimi due eventi/notizie istituzionali di Sommariva
+        { name: "Comune Sommariva Bosco", url: "https://news.google.com/rss/search?q=Sommariva+del+Bosco+eventi+OR+comune+OR+cronaca+OR+istituzionale&hl=it&gl=IT&ceid=IT:it", isLocal: true, limit: 2 },
+        // Altre fonti
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", isLocal: false, limit: 3 },
         { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", isLocal: false, limit: 3 },
         { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", isLocal: false, limit: 2 },
@@ -223,12 +224,11 @@
     const loadingMessage = document.getElementById('loading-message');
     const imageWrapper = document.getElementById('news-image-wrapper');
     const textWrapper = document.getElementById('news-text-wrapper');
-    
     const elImage = document.getElementById('news-image');
     const elTitle = document.getElementById('news-title');
     const elDesc = document.getElementById('news-description');
 
-    // Filtro anti-pubblicità e notizie non desiderate
+    // Filtro anti-pubblicità
     const spamKeywords = [
         "dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", 
         "visita specialistica", "pubblicità", "promozione", "sponsorizzato", 
@@ -242,12 +242,22 @@
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
+    // Pulisce il titolo dai " - nomesito.it" o " | Nomesito"
+    function formatTitle(title, sourceName) {
+        let clean = cleanHTML(title);
+        // Rimuove la dicitura " - nomesito.it" o simili dalla fine
+        clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
+        // Rimuove il nome della fonte se è incollato nel titolo
+        const sourceRegex = new RegExp(`\\s*[-|]\\s*${sourceName}`, 'i');
+        clean = clean.replace(sourceRegex, '');
+        return clean.trim();
+    }
+
     function isAdOrSpam(title, description) {
         let content = (title + " " + description).toLowerCase();
         return spamKeywords.some(keyword => content.includes(keyword));
     }
 
-    // Filtro per escludere le notizie identiche (es. stessa notizia su più giornali)
     function isDuplicate(newTitle, existingNews) {
         let newWords = newTitle.toLowerCase().split(/\W+/).filter(w => w.length > 4);
         
@@ -259,7 +269,6 @@
                 if (existingWords.includes(word)) matches++;
             }
             
-            // Se almeno 3 parole chiave corrispondono, lo consideriamo un duplicato e lo scartiamo
             if (matches >= 3 && newWords.length > 0) {
                 return true;
             }
@@ -267,9 +276,7 @@
         return false;
     }
 
-    // Costruisce la descrizione finendo sempre in modo pulito con il punto fermo
     function formatDescription(text) {
-        // Pulisce la fine del testo dai classici tre puntini di sospensione
         text = text.replace(/\.{3}$|\[\.\.\.\]$\vert{}\.\.\.$/g, '').trim();
         const MAX_LENGTH = 600; 
         
@@ -280,7 +287,6 @@
         let truncated = text.substring(0, MAX_LENGTH);
         let lastPeriodIndex = truncated.lastIndexOf('.');
         
-        // Cerca l'ultimo punto utile per tagliare elegantemente la frase
         if (lastPeriodIndex > (MAX_LENGTH * 0.4)) {
             return truncated.substring(0, lastPeriodIndex + 1);
         } else {
@@ -289,14 +295,13 @@
         }
     }
 
-    // Cerca o assegna una foto alla notizia
     function extractImage(item) {
         if (item.thumbnail && item.thumbnail.trim() !== "") return item.thumbnail;
         if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) return item.enclosure.link;
         const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
         let match = imgRegex.exec(item.content || item.description);
         if (match && match[1]) return match[1];
-        // Immagine di repertorio a tema istituzionale/territoriale se manca la foto originale
+        // Immagine neutrale a tema territoriale come repertorio standard
         return "https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
     }
 
@@ -305,21 +310,19 @@
 
         for (const feed of rssFeeds) {
             try {
-                // Utilizza il convertitore API rss2json per scavalcare i blocchi dei browser
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
                 const response = await fetch(apiUrl);
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    // Prende il numero esatto di notizie impostato nel parametro 'limit'
                     const items = data.items.slice(0, feed.limit); 
                     
                     items.forEach(item => {
                         let rawText = item.content ? item.content : item.description;
                         let cleanText = cleanHTML(rawText);
-                        let cleanTitle = cleanHTML(item.title);
+                        let cleanTitle = formatTitle(item.title, feed.name);
                         
-                        // Applica i controlli anti-pubblicità e anti-doppioni
+                        // Scarta spam e doppioni
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
                         if (isDuplicate(cleanTitle, tempNews)) return;
                         
@@ -339,7 +342,7 @@
         }
 
         if (tempNews.length > 0) {
-            // Le notizie locali (Il Comune) scavalcano quelle generali e vengono messe sempre in testa
+            // Ordina: le notizie locali istituzionali vanno per prime
             tempNews.sort((a, b) => {
                 if (a.isLocal && !b.isLocal) return -1;
                 if (!a.isLocal && b.isLocal) return 1;
@@ -360,11 +363,11 @@
         const currentNews = newsItems[currentIndex];
         loadingMessage.style.display = 'none';
         
-        // Dissolvenza in uscita
         contentArea.classList.add('fade-out');
         elSource.classList.remove('show-content');
 
         setTimeout(() => {
+            // Imposta l'immagine (se l'URL non è valido, entra in gioco l'onerror sull'HTML)
             elImage.src = currentNews.image;
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
@@ -373,24 +376,17 @@
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
 
-            // Dissolvenza in entrata
             contentArea.classList.remove('fade-out');
             elSource.classList.add('show-content');
 
-            // Ruota al prossimo indice (e ricomincia da zero se arrivati in fondo)
             currentIndex++;
             if (currentIndex >= newsItems.length) currentIndex = 0;
             
         }, 800); 
     }
 
-    // Carica subito i dati
     fetchAllNews();
-    
-    // Cambia notizia sullo schermo ogni 15 secondi
     setInterval(showNews, DISPLAY_DURATION);
-    
-    // Cerca nuove notizie in background ogni ora e sostituisce automaticamente le più vecchie
     setInterval(fetchAllNews, 3600000); 
 
 </script>
