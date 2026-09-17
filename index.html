@@ -53,7 +53,7 @@
 
         /* Stile del Widget principale */
         #widget-container {
-            position: relative; /* Necessario per posizionare la fonte in basso a destra */
+            position: relative; /* Necessario per posizionare gli elementi in basso */
             width: 100%;
             height: 100%;
             background-color: var(--widget-bg);
@@ -93,14 +93,14 @@
             align-items: flex-start;
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
-            padding-left: 10px; /* Sposta foto leggermente a sinistra */
+            padding-left: 10px;
         }
 
         .fade-out {
             opacity: 0 !important;
         }
 
-        /* Immagine della notizia (più piccola) */
+        /* Immagine della notizia posizionata in alto a sinistra */
         #news-image-wrapper {
             width: 400px;
             height: 300px;
@@ -109,7 +109,7 @@
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             background-color: var(--widget-border);
-            margin-top: 10px; /* Allinea leggermente la foto con il testo */
+            margin-top: 10px;
         }
 
         #news-image {
@@ -118,14 +118,17 @@
             object-fit: cover;
         }
 
-        /* Testo della notizia */
+        /* Testo della notizia posizionato a destra */
         #news-text-wrapper {
             flex: 1;
             display: flex;
             flex-direction: column;
+            padding-right: 20px;
+            /* Permettiamo al testo di occupare più spazio in altezza */
+            height: 500px; 
         }
 
-        /* Titolo ingrandito e ottimizzato */
+        /* Titolo ingrandito */
         #news-title {
             font-size: 54px;
             font-weight: 800;
@@ -133,29 +136,24 @@
             line-height: 1.15;
             margin-bottom: 25px;
             display: -webkit-box;
-            -webkit-line-clamp: 4; /* Fino a 4 righe per il titolo */
+            -webkit-line-clamp: 4; 
             line-clamp: 4;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
-        /* Descrizione con più righe leggibili */
+        /* Descrizione. Rimosso il line-clamp CSS, ora lo gestisce il JavaScript con il punto */
         #news-description {
             font-size: 28px;
             color: var(--text-sec);
-            line-height: 1.45;
-            display: -webkit-box;
-            -webkit-line-clamp: 5; /* Ora mostra fino a 5 righe di contenuto */
-            line-clamp: 5;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            line-height: 1.5;
         }
 
-        /* Etichetta della Fonte spostata in basso a destra del rettangolo */
+        /* Etichetta della Fonte spostata IN BASSO A SINISTRA sotto l'immagine */
         #news-source {
             position: absolute;
-            bottom: 35px;
-            right: 45px;
+            bottom: 45px;
+            left: 55px; /* Esattamente sotto l'immagine, lato sinistro */
             font-size: 28px;
             font-weight: 700;
             color: var(--accent-orange);
@@ -173,7 +171,7 @@
             color: var(--text-sec);
         }
 
-        /* Mostra la fonte quando il contenuto è visibile */
+        /* Classe per l'animazione di entrata */
         .show-content {
             opacity: 1 !important;
         }
@@ -210,7 +208,7 @@
             </div>
         </div>
 
-        <!-- Fonte ancorata in basso a destra del widget-container -->
+        <!-- Fonte ancorata in basso a sinistra (sotto il vuoto dell'immagine) -->
         <div id="news-source">Fonte</div>
 
     </div>
@@ -230,6 +228,7 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
+    // Fonti strettamente locali, rimosse le testate generaliste regionali/nazionali
     const rssFeeds = [
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml" },
         { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/" },
@@ -243,7 +242,7 @@
     const DISPLAY_DURATION = 30000; // 30 secondi
 
     const contentArea = document.getElementById('content-area');
-    const elSource = document.getElementById('news-source'); // Fonte gestita con una sua transizione
+    const elSource = document.getElementById('news-source');
     const loadingMessage = document.getElementById('loading-message');
     const imageWrapper = document.getElementById('news-image-wrapper');
     const textWrapper = document.getElementById('news-text-wrapper');
@@ -252,19 +251,47 @@
     const elTitle = document.getElementById('news-title');
     const elDesc = document.getElementById('news-description');
 
+    // Estrae e pulisce il testo dal codice HTML
     function cleanHTML(html) {
         let tmp = document.createElement("DIV");
         tmp.innerHTML = html;
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
+    // Funzione per tagliare il testo a una frase completa finendo con il punto
+    function formatDescription(text) {
+        const MAX_LENGTH = 380; // Lunghezza massima del testo
+        
+        if (text.length <= MAX_LENGTH) {
+            // Se è già corto, ci assicuriamo solo che finisca col punto
+            return text.endsWith('.') ? text : text + '.';
+        }
+
+        // Tagliamo grezzamente alla lunghezza massima
+        let truncated = text.substring(0, MAX_LENGTH);
+        
+        // Cerchiamo l'ultimo punto all'interno del testo tagliato
+        let lastPeriodIndex = truncated.lastIndexOf('.');
+
+        // Se troviamo un punto nella seconda metà del testo, tagliamo la frase lì
+        if (lastPeriodIndex > (MAX_LENGTH * 0.5)) {
+            return truncated.substring(0, lastPeriodIndex + 1);
+        } else {
+            // Se non ci sono punti utili, tagliamo all'ultimo spazio per non spezzare parole e aggiungiamo un punto
+            let lastSpaceIndex = truncated.lastIndexOf(' ');
+            return truncated.substring(0, lastSpaceIndex) + '.';
+        }
+    }
+
+    // Ricerca dell'immagine
     function extractImage(item) {
         if (item.thumbnail && item.thumbnail.trim() !== "") return item.thumbnail;
         if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) return item.enclosure.link;
         const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
         let match = imgRegex.exec(item.content || item.description);
         if (match && match[1]) return match[1];
-        return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+        // Immagine segnaposto neutra se la notizia non ha foto
+        return "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
     }
 
     async function fetchAllNews() {
@@ -277,12 +304,14 @@
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    const items = data.items.slice(0, 3); 
+                    // Preleva le prime 4 notizie da ogni testata locale
+                    const items = data.items.slice(0, 4); 
                     items.forEach(item => {
+                        let cleanText = cleanHTML(item.description);
                         tempNews.push({
                             source: feed.name,
                             title: item.title,
-                            description: cleanHTML(item.description),
+                            description: formatDescription(cleanText),
                             image: extractImage(item),
                             pubDate: new Date(item.pubDate)
                         });
@@ -294,6 +323,7 @@
         }
 
         if (tempNews.length > 0) {
+            // Riordina mescolando le notizie in base all'orario
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
             currentIndex = 0;
@@ -309,7 +339,7 @@
         const currentNews = newsItems[currentIndex];
         loadingMessage.style.display = 'none';
         
-        // Dissolvenza in uscita sia per l'area contenuto che per la fonte
+        // Dissolvenza in uscita
         contentArea.classList.add('fade-out');
         elSource.classList.remove('show-content');
 
@@ -323,7 +353,7 @@
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
 
-            // Dissolvenza in entrata per contenuto e fonte
+            // Dissolvenza in entrata
             contentArea.classList.remove('fade-out');
             elSource.classList.add('show-content');
 
