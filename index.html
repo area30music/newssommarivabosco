@@ -113,7 +113,7 @@
             flex-direction: column;
             justify-content: center; 
             padding-right: 20px;
-            height: 400px; /* Esattamente l'altezza della foto per sfruttare lo spazio tra le linee rosse */
+            height: 400px; /* Sfrutta esattamente l'altezza della foto */
             overflow: hidden;
         }
 
@@ -176,7 +176,7 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80'">
+                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80'">
             </div>
             
             <div id="news-text-wrapper" style="display: none;">
@@ -259,19 +259,33 @@
         return false;
     }
 
-    // GENERATORE INTELLIGENTE DI IMMAGINI A TEMA (SPECIFICO PER CALCIO, CIBO, POLITICA E CULTURA)
+    // SELETTORE DI IMMAGINI ESTREMAMENTE PERTINENTE E DETTAGLIATO IN BASE AL TITOLO
     function getSmartImageByTitle(title) {
         let t = title.toLowerCase();
-        if (/calcio|partita|mister|serie|fbc|fc|sport|sconfitta|vittoria|gol|squadra|giocatori|asta|fossano|albese|saluzzo|varese|cellevarazze/i.test(t)) {
-            return "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80"; // Campo da calcio / Stadio reale
-        } else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba|bra|bra's|formaggio/i.test(t)) {
-            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Cibo / Mercato / Gastronomia
-        } else if (/comune|sindaco|regione|politica|consiglio|amministrazione|ente|provincia|elezioni|trifolao|schlein|meloni|conte|bonelli/i.test(t)) {
+        
+        // 1. Pallavolo / Volley (Controllo specifico prima del calcio)
+        if (/volley|pallavolo|cuneo volley|schiacciata|rete/i.test(t)) {
+            return "https://images.unsplash.com/photo-1592656094267-764a452ae0f4?auto=format&fit=crop&w=800&q=80"; // Pallavolo
+        }
+        // 2. Calcio / Partite sportive
+        else if (/calcio|partita|mister|serie d|fbc|fc|sconfitta|vittoria|gol|squadra|giocatori|asta|fossano|albese|saluzzo|varese|cellevarazze/i.test(t)) {
+            return "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80"; // Campo da calcio
+        }
+        // 3. Cibo / Slow Food / Mercato / Vino / Tartufo
+        else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba|bra|bra's|formaggio/i.test(t)) {
+            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Cibo / Mercato / Slow Food
+        }
+        // 4. Politica / Istituzionale
+        else if (/comune|sindaco|regione|politica|consiglio|amministrazione|ente|provincia|elezioni|trifolao|schlein|meloni|conte|bonelli/i.test(t)) {
             return "https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=800&q=80"; // Politica / Istituzionale
-        } else if (/premio|carriera|vittorio|feltri|cinema|teatro|libri|mostra|artista|concerto|spettacolo/i.test(t)) {
-            return "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80"; // Spettacolo / Eventi / Cultura
-        } else {
-            return "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"; // Territorio / Paesaggio
+        }
+        // 5. Cultura / Spettacolo / Premi
+        else if (/premio|carriera|vittorio|feltri|cinema|teatro|libri|mostra|artista|concerto|spettacolo/i.test(t)) {
+            return "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80"; // Spettacolo / Cultura
+        }
+        // 6. Fallback generico NEWS (Giornale pulito) se non rientra nelle categorie
+        else {
+            return "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80"; // Giornale / News generico
         }
     }
 
@@ -288,7 +302,7 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Filtro rigoroso per bloccare immagini mancanti, pixel, errori o il blocco "hotlinked" (divieto)
+        // Rileva e scarta immagini mancanti, pixel di tracciamento o bloccate con cartello "hotlinked" / stop
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning|default/i.test(imgUrl)) {
             return getSmartImageByTitle(title);
         }
@@ -352,7 +366,7 @@
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
 
-            // SCALA DIMENSIONE FONT POTENZIATA (Sfrutta al massimo lo spazio verticale tra le linee rosse)
+            // SCALA DIMENSIONE FONT POTENZIATA (Sfrutta al massimo lo spazio verticale)
             let len = currentNews.title.length;
             if (len < 35) {
                 elTitle.style.fontSize = "62px"; 
