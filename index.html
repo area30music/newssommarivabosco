@@ -81,7 +81,7 @@
             flex: 1;
             display: flex;
             gap: 45px; 
-            align-items: center; /* Centrato verticalmente per valorizzare foto e titolo grande */
+            align-items: center; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             padding-left: 10px;
@@ -90,7 +90,7 @@
 
         .fade-out { opacity: 0 !important; }
 
-        /* Immagine ingrandita e proporzionata per sfruttare lo spazio verticale liberato */
+        /* Immagine ottimizzata */
         #news-image-wrapper {
             width: 440px;
             height: 400px; 
@@ -118,15 +118,15 @@
             overflow: hidden;
         }
 
-        /* Titolo grande, esteso fino a 5 righe per accogliere tutto il testo senza tagli */
+        /* Titolo ridimensionato leggermente per fare in modo che entri sempre completo senza mai troncare */
         #news-title {
-            font-size: 52px; 
+            font-size: 38px; 
             font-weight: 800;
             color: var(--text-main);
-            line-height: 1.15;
+            line-height: 1.25;
             display: -webkit-box;
-            -webkit-line-clamp: 5;
-            line-clamp: 5;
+            -webkit-line-clamp: 6;
+            line-clamp: 6;
             -webkit-box-orient: vertical;
             overflow: hidden;
             transition: color 1s ease;
@@ -179,7 +179,6 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <!-- Fallback di sicurezza per immagini rotte o bloccate -->
                 <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
@@ -263,12 +262,26 @@
         return false;
     }
 
-    function extractImage(item) {
+    // SELETTORE INTELLIGENTE DI IMMAGINI IN BASE AL TITOLO (Anti-Hotlinked / Anti-Divieto)
+    function getSmartImageByTitle(title) {
+        let t = title.toLowerCase();
+        if (/calcio|partita|mister|serie|fbc|fc|sport|sconfitta|vittoria|gol|squadra|giocatori/i.test(t)) {
+            return "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80"; // Immagine Sport/Calcio
+        } else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba/i.test(t)) {
+            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Immagine Cibo/Mercato
+        } else if (/comune|sindaco|regione|politica|consiglio|amministrazione|ente|provincia|elezioni/i.test(t)) {
+            return "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"; // Immagine Istituzionale/Municipio
+        } else {
+            return "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80"; // Immagine News/Giornale generica di qualità
+        }
+    }
+
+    function extractImage(item, title) {
         let imgUrl = "";
         
         if (item.thumbnail && item.thumbnail.trim() !== "") {
             imgUrl = item.thumbnail;
-        } else if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) {
+        } else if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
             imgUrl = item.enclosure.link;
         } else {
             const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
@@ -276,8 +289,9 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
+        // Se l'immagine manca, è corrotta, è un pixel di tracciamento o è il blocco "hotlinked" (divieto)
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked/i.test(imgUrl)) {
-            return "https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+            return getSmartImageByTitle(title);
         }
         return imgUrl;
     }
@@ -305,7 +319,7 @@
                         tempNews.push({
                             source: feed.name,
                             title: cleanTitle,
-                            image: extractImage(item),
+                            image: extractImage(item, cleanTitle),
                             pubDate: new Date(item.pubDate)
                         });
                     });
