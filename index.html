@@ -174,7 +174,7 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <!-- Aggiunto onerror: se la foto è rotta o cancellata, mette subito quella di repertorio -->
+                <!-- Fallback se la foto è rotta o cancellata dal sito -->
                 <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
@@ -203,16 +203,13 @@
     setInterval(updateTheme, 60000);
 
     // =======================================================================
-    // IMPOSTAZIONI DEI FEED - PONTE INTEGRATO
+    // IMPOSTAZIONI DEI FEED - Solo testate locali verificate (Nessun ponte esterno)
     // =======================================================================
     const rssFeeds = [
-        // Ponte automatico per prendere solo gli ultimi due eventi/notizie istituzionali di Sommariva
-        { name: "Comune Sommariva Bosco", url: "https://news.google.com/rss/search?q=Sommariva+del+Bosco+eventi+OR+comune+OR+cronaca+OR+istituzionale&hl=it&gl=IT&ceid=IT:it", isLocal: true, limit: 2 },
-        // Altre fonti
-        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", isLocal: false, limit: 3 },
-        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", isLocal: false, limit: 3 },
-        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", isLocal: false, limit: 2 },
-        { name: "La Guida", url: "https://www.laguida.it/feed/", isLocal: false, limit: 2 }
+        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 4 },
+        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", limit: 4 },
+        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", limit: 4 },
+        { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
     let newsItems = [];
@@ -242,14 +239,13 @@
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
-    // Pulisce il titolo dai " - nomesito.it" o " | Nomesito"
+    // Pulisce in profondità il titolo (Rimuove " - Il Carmagnolese", " - TargatoCN", ecc.)
     function formatTitle(title, sourceName) {
         let clean = cleanHTML(title);
-        // Rimuove la dicitura " - nomesito.it" o simili dalla fine
+        // Rimuove siti web alla fine (es. - sito.it)
         clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
-        // Rimuove il nome della fonte se è incollato nel titolo
-        const sourceRegex = new RegExp(`\\s*[-|]\\s*${sourceName}`, 'i');
-        clean = clean.replace(sourceRegex, '');
+        // Rimuove altre fonti attaccate alla fine con un trattino (es. - Il Carmagnolese)
+        clean = clean.replace(/\s*[-|]\s*[A-Z][a-zA-Z\s]+$/i, '');
         return clean.trim();
     }
 
@@ -258,6 +254,7 @@
         return spamKeywords.some(keyword => content.includes(keyword));
     }
 
+    // Sistema anti-doppioni
     function isDuplicate(newTitle, existingNews) {
         let newWords = newTitle.toLowerCase().split(/\W+/).filter(w => w.length > 4);
         
@@ -276,6 +273,7 @@
         return false;
     }
 
+    // Costruzione dinamica del testo
     function formatDescription(text) {
         text = text.replace(/\.{3}$|\[\.\.\.\]$\vert{}\.\.\.$/g, '').trim();
         const MAX_LENGTH = 600; 
@@ -295,14 +293,24 @@
         }
     }
 
+    // Estrazione dell'immagine con filtro di sicurezza aggiuntivo
     function extractImage(item) {
-        if (item.thumbnail && item.thumbnail.trim() !== "") return item.thumbnail;
-        if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) return item.enclosure.link;
-        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-        let match = imgRegex.exec(item.content || item.description);
-        if (match && match[1]) return match[1];
-        // Immagine neutrale a tema territoriale come repertorio standard
-        return "https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+        let img = "";
+        if (item.thumbnail && item.thumbnail.trim() !== "") {
+            img = item.thumbnail;
+        } else if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) {
+            img = item.enclosure.link;
+        } else {
+            const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
+            let match = imgRegex.exec(item.content || item.description);
+            if (match && match[1]) img = match[1];
+        }
+
+        // Se l'immagine non esiste, oppure è un pixel trasparente di tracciamento (es. feedburner), usa il repertorio
+        if (!img || img.includes("feedburner") || img.includes("1x1") || img.length < 10) {
+            return "https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+        }
+        return img;
     }
 
     async function fetchAllNews() {
@@ -322,7 +330,7 @@
                         let cleanText = cleanHTML(rawText);
                         let cleanTitle = formatTitle(item.title, feed.name);
                         
-                        // Scarta spam e doppioni
+                        // Controlli 
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
                         if (isDuplicate(cleanTitle, tempNews)) return;
                         
@@ -331,8 +339,7 @@
                             title: cleanTitle,
                             description: formatDescription(cleanText),
                             image: extractImage(item),
-                            pubDate: new Date(item.pubDate),
-                            isLocal: feed.isLocal
+                            pubDate: new Date(item.pubDate)
                         });
                     });
                 }
@@ -342,13 +349,8 @@
         }
 
         if (tempNews.length > 0) {
-            // Ordina: le notizie locali istituzionali vanno per prime
-            tempNews.sort((a, b) => {
-                if (a.isLocal && !b.isLocal) return -1;
-                if (!a.isLocal && b.isLocal) return 1;
-                return b.pubDate - a.pubDate;
-            });
-
+            // Ordina per data dalla più recente alla più vecchia
+            tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
             currentIndex = 0;
             showNews();
@@ -367,7 +369,6 @@
         elSource.classList.remove('show-content');
 
         setTimeout(() => {
-            // Imposta l'immagine (se l'URL non è valido, entra in gioco l'onerror sull'HTML)
             elImage.src = currentNews.image;
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
