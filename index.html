@@ -27,33 +27,23 @@
             --accent-orange: #ff9500;
         }
 
-        /* Layout generale e centramento */
+        /* Layout hardware-friendly compatibile con VNNOX */
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
-            height: 100vh;
+            height: 100%;
             background-color: var(--page-bg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            transition: background-color 1s ease;
-        }
-
-        #scaler {
-            width: 1240px;
-            height: 700px;
-            transform: scale(0.55);
-            transform-origin: center;
-            display: flex;
         }
 
         #widget-container {
-            position: relative; 
-            width: 100%;
-            height: 100%;
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            right: 25px;
+            bottom: 25px;
             background-color: var(--widget-bg);
             border: 2px solid var(--widget-border);
             border-radius: 32px;
@@ -62,7 +52,6 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transition: all 1s ease;
         }
 
         #header {
@@ -74,8 +63,8 @@
             line-height: 1;
         }
 
-        #header .blue-text { color: var(--accent-blue); transition: color 1s ease; }
-        #header .white-text { color: var(--text-main); transition: color 1s ease; }
+        #header .blue-text { color: var(--accent-blue); }
+        #header .white-text { color: var(--text-main); }
 
         #content-area {
             flex: 1;
@@ -98,7 +87,6 @@
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             background-color: var(--widget-border);
-            transition: border-color 1s ease, background-color 1s ease;
         }
 
         #news-image {
@@ -126,7 +114,7 @@
             line-clamp: 6;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            transition: color 1s ease, font-size 0.3s ease;
+            transition: font-size 0.3s ease;
         }
 
         #news-source {
@@ -140,45 +128,38 @@
             align-items: center;
             gap: 8px;
             opacity: 0;
-            transition: opacity 0.8s ease-in-out, color 1s ease;
+            transition: opacity 0.8s ease-in-out;
         }
 
         #news-source::before {
             content: "(•)";
             font-size: 18px;
             color: var(--text-sec);
-            transition: color 1s ease;
         }
 
         .show-content { opacity: 1 !important; }
-
-        #loading-message {
-            display: none; /* Disattivato per evitare schermate nere di attesa */
-        }
     </style>
 </head>
 <body>
 
-<div id="scaler">
-    <div id="widget-container">
-        
-        <div id="header">
-            <span class="blue-text">SOMMARIVA DEL BOSCO</span> <span class="white-text">- NEWS</span>
-        </div>
-        
-        <div id="content-area">
-            <div id="news-image-wrapper">
-                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80'">
-            </div>
-            
-            <div id="news-text-wrapper">
-                <div id="news-title">Caricamento notizie in corso...</div>
-            </div>
-        </div>
-
-        <div id="news-source" class="show-content">Sommariva News</div>
-
+<div id="widget-container">
+    
+    <div id="header">
+        <span class="blue-text">SOMMARIVA DEL BOSCO</span> <span class="white-text">- NEWS</span>
     </div>
+    
+    <div id="content-area">
+        <div id="news-image-wrapper">
+            <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80'">
+        </div>
+        
+        <div id="news-text-wrapper">
+            <div id="news-title">Caricamento notizie in corso...</div>
+        </div>
+    </div>
+
+    <div id="news-source" class="show-content">Sommariva News</div>
+
 </div>
 
 <script>
@@ -201,7 +182,6 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA LOCALI (Partono istantaneamente senza dipendere dalla rete del LEDwall)
     let newsItems = [
         { source: "Sommariva News", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
         { source: "Eventi Locali", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
@@ -284,7 +264,7 @@
         for (const feed of rssFeeds) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // Timeout di sicurezza a 3 secondi
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
 
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
                 const response = await fetch(apiUrl, { signal: controller.signal });
@@ -310,12 +290,9 @@
                         });
                     });
                 }
-            } catch (error) {
-                // Se la rete è bloccata o va in timeout, salta silenziosamente senza bloccare la pagina
-            }
+            } catch (error) {}
         }
 
-        // Se ha scaricato nuove notizie online, aggiorna la lista in modo trasparente
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
@@ -357,11 +334,9 @@
         }, 800); 
     }
 
-    // Avvia subito la visualizzazione con i dati locali per evitare schermate nere
     showNews();
     setInterval(showNews, DISPLAY_DURATION);
 
-    // Prova a scaricare le notizie fresche in background
     fetchAllNews();
     setInterval(fetchAllNews, 3600000); 
 
