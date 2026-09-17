@@ -113,7 +113,7 @@
             flex-direction: column;
             justify-content: center; 
             padding-right: 20px;
-            height: 400px; /* Sfrutta esattamente l'altezza della foto */
+            height: 400px; 
             overflow: hidden;
         }
 
@@ -259,10 +259,15 @@
         return false;
     }
 
-    // IMMAGINE DI DEFAULT (Macchina da scrivere con la scritta "News")
+    // IMMAGINE FISSA "NEWS" (Macchina da scrivere) USATA PER TUTTE LE FOTO BLOCCATE O DI GAZZETTA D'ALBA
     const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
 
-    function extractImage(item, title) {
+    function extractImage(item, sourceName) {
+        // Gazzetta d'Alba blocca i link esterni con l'immagine di stop, forziamo sempre la foto "News"
+        if (sourceName === "Gazzetta d'Alba") {
+            return NEWS_DEFAULT_IMAGE;
+        }
+
         let imgUrl = "";
         
         if (item.thumbnail && item.thumbnail.trim() !== "") {
@@ -275,7 +280,7 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se l'immagine manca, è corrotta, è un pixel o contiene blocchi anti-hotlink/stop, FORZA SEMPRE LA FOTO "NEWS" CON LA MACCHINA DA SCRIVERE
+        // Se l'immagine manca, è corrotta, è un pixel o contiene blocchi anti-hotlink/stop, usa sempre la foto "News"
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning|default/i.test(imgUrl)) {
             return NEWS_DEFAULT_IMAGE;
         }
@@ -305,7 +310,7 @@
                         tempNews.push({
                             source: feed.name,
                             title: cleanTitle,
-                            image: extractImage(item, cleanTitle),
+                            image: extractImage(item, feed.name),
                             pubDate: new Date(item.pubDate)
                         });
                     });
@@ -339,7 +344,7 @@
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
 
-            // SCALA DIMENSIONE FONT POTENZIATA (Sfrutta al massimo lo spazio verticale tra le linee rosse)
+            // ADATTATORE DINAMICO FONT: Sfrutta al massimo lo spazio tra le linee rosse
             let len = currentNews.title.length;
             if (len < 35) {
                 elTitle.style.fontSize = "62px"; 
