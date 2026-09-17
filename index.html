@@ -121,12 +121,18 @@
             color: var(--text-main);
             line-height: 1.15;
             margin-bottom: 20px;
+            display: -webkit-box;
+            -webkit-line-clamp: 4; /* Margine massimo per titoli molto lunghi */
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         #news-description {
             font-size: 27px;
             color: var(--text-sec);
             line-height: 1.45;
+            /* Rimosso il line-clamp CSS, ora la lunghezza la gestisce il Javascript a frasi intere */
         }
 
         #news-source {
@@ -174,8 +180,8 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <!-- Fallback se la foto è rotta o cancellata dal sito -->
-                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
+                <!-- Immagine di fallback assoluta in caso di errore di caricamento -->
+                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
             <div id="news-text-wrapper" style="display: none;">
@@ -202,9 +208,6 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // =======================================================================
-    // IMPOSTAZIONI DEI FEED - Solo testate locali verificate (Nessun ponte esterno)
-    // =======================================================================
     const rssFeeds = [
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 4 },
         { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", limit: 4 },
@@ -214,7 +217,7 @@
 
     let newsItems = [];
     let currentIndex = 0;
-    const DISPLAY_DURATION = 15000; // 15 secondi a notizia
+    const DISPLAY_DURATION = 15000; 
 
     const contentArea = document.getElementById('content-area');
     const elSource = document.getElementById('news-source');
@@ -225,7 +228,6 @@
     const elTitle = document.getElementById('news-title');
     const elDesc = document.getElementById('news-description');
 
-    // Filtro anti-pubblicità
     const spamKeywords = [
         "dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", 
         "visita specialistica", "pubblicità", "promozione", "sponsorizzato", 
@@ -239,12 +241,9 @@
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
-    // Pulisce in profondità il titolo (Rimuove " - Il Carmagnolese", " - TargatoCN", ecc.)
     function formatTitle(title, sourceName) {
         let clean = cleanHTML(title);
-        // Rimuove siti web alla fine (es. - sito.it)
         clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
-        // Rimuove altre fonti attaccate alla fine con un trattino (es. - Il Carmagnolese)
         clean = clean.replace(/\s*[-|]\s*[A-Z][a-zA-Z\s]+$/i, '');
         return clean.trim();
     }
@@ -254,63 +253,81 @@
         return spamKeywords.some(keyword => content.includes(keyword));
     }
 
-    // Sistema anti-doppioni
     function isDuplicate(newTitle, existingNews) {
         let newWords = newTitle.toLowerCase().split(/\W+/).filter(w => w.length > 4);
-        
         for (let item of existingNews) {
             let existingWords = item.title.toLowerCase().split(/\W+/).filter(w => w.length > 4);
             let matches = 0;
-            
             for (let word of newWords) {
                 if (existingWords.includes(word)) matches++;
             }
-            
-            if (matches >= 3 && newWords.length > 0) {
-                return true;
-            }
+            if (matches >= 3 && newWords.length > 0) return true;
         }
         return false;
     }
 
-    // Costruzione dinamica del testo
-    function formatDescription(text) {
-        text = text.replace(/\.{3}$|\[\.\.\.\]$\vert{}\.\.\.$/g, '').trim();
-        const MAX_LENGTH = 600; 
+    // NUOVO ALGORITMO RIASSUNTO: Crea una descrizione perfetta a frasi intere, senza eccedere
+    function buildSmartSummary(text) {
+        // Pulisce puntini fastidiosi
+        text = text.replace(/\.{2,}/g, '').trim(); 
         
-        if (text.length <= MAX_LENGTH) {
-            return text.endsWith('.') ? text : text + '.';
+        // Divide in singole frasi basandosi sul punto fermo
+        let sentences = text.split('. ');
+        let summary = "";
+        const MAX_CHARS = 240; // Limite di sicurezza per non sforare mai in verticale (max ~4 righe)
+
+        for (let i = 0; i < sentences.length; i++) {
+            let sentence = sentences[i].trim();
+            if (!sentence) continue;
+            
+            // Rimette il punto a fine frase
+            if (!sentence.endsWith('.')) sentence += '.';
+            
+            // Se aggiungendo questa frase superiamo lo spazio massimo...
+            if ((summary.length + sentence.length) > MAX_CHARS) {
+                // ...se abbiamo già almeno una frase completa salvata, ci fermiamo qui (riassunto perfetto).
+                if (summary.length > 0) {
+                    break;
+                } 
+                // ...se invece la primissima frase è lunghissima e sfora da sola, siamo costretti a tagliarla.
+                else {
+                    let words = sentence.split(' ');
+                    let temp = "";
+                    for(let w of words) {
+                        if (temp.length + w.length > (MAX_CHARS - 10)) break;
+                        temp += w + " ";
+                    }
+                    summary = temp.trim() + "...";
+                    break;
+                }
+            }
+            
+            summary += (summary.length > 0 ? " " : "") + sentence;
         }
         
-        let truncated = text.substring(0, MAX_LENGTH);
-        let lastPeriodIndex = truncated.lastIndexOf('.');
-        
-        if (lastPeriodIndex > (MAX_LENGTH * 0.4)) {
-            return truncated.substring(0, lastPeriodIndex + 1);
-        } else {
-            let lastSpaceIndex = truncated.lastIndexOf(' ');
-            return (lastSpaceIndex > 0 ? truncated.substring(0, lastSpaceIndex) : truncated) + '.';
-        }
+        return summary || "Dettagli aggiuntivi non disponibili.";
     }
 
-    // Estrazione dell'immagine con filtro di sicurezza aggiuntivo
+    // FILTRO IMMAGINI POTENZIATO: Scarta pixel di tracciamento e immagini rotte
     function extractImage(item) {
-        let img = "";
+        let imgUrl = "";
+        
         if (item.thumbnail && item.thumbnail.trim() !== "") {
-            img = item.thumbnail;
+            imgUrl = item.thumbnail;
         } else if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) {
-            img = item.enclosure.link;
+            imgUrl = item.enclosure.link;
         } else {
             const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
             let match = imgRegex.exec(item.content || item.description);
-            if (match && match[1]) img = match[1];
+            if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se l'immagine non esiste, oppure è un pixel trasparente di tracciamento (es. feedburner), usa il repertorio
-        if (!img || img.includes("feedburner") || img.includes("1x1") || img.length < 10) {
-            return "https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+        // Se non c'è url o se contiene parole tipiche dei pixel di tracciamento invisibili (feedburner, 1x1, pixel, tracker)
+        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank/i.test(imgUrl)) {
+            // Immagine di repertorio bellissima a tema "News/Lettura"
+            return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
         }
-        return img;
+        return imgUrl;
     }
 
     async function fetchAllNews() {
@@ -330,14 +347,13 @@
                         let cleanText = cleanHTML(rawText);
                         let cleanTitle = formatTitle(item.title, feed.name);
                         
-                        // Controlli 
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
                         if (isDuplicate(cleanTitle, tempNews)) return;
                         
                         tempNews.push({
                             source: feed.name,
                             title: cleanTitle,
-                            description: formatDescription(cleanText),
+                            description: buildSmartSummary(cleanText),
                             image: extractImage(item),
                             pubDate: new Date(item.pubDate)
                         });
@@ -349,7 +365,6 @@
         }
 
         if (tempNews.length > 0) {
-            // Ordina per data dalla più recente alla più vecchia
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
             currentIndex = 0;
