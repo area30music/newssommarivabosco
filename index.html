@@ -3,196 +3,295 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Sommariva del Bosco</title>
+    <title>News Locali LEDwall</title>
     <style>
-        body {
+        /* Azzera i margini e nasconde le barre di scorrimento del browser */
+        body, html {
             margin: 0;
             padding: 0;
-            background-color: #000; /* Sfondo nero essenziale per il contrasto sul LEDwall */
-            color: #fff;
-            font-family: Arial, sans-serif;
+            background-color: #000; /* Sfondo nero utile per i bordi fuori scala */
             overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        #ledwall-container {
-            /* Dimensioni e scala richieste */
+        /* Contenitore principale con le misure esatte richieste */
+        #widget-container {
             width: 1240px;
             height: 700px;
+            background-color: #111;
+            /* Scalatura a 0.55 con origine in alto a sinistra */
             transform: scale(0.55);
             transform-origin: top left;
-            
-            position: relative;
-            box-sizing: border-box;
-            padding: 50px;
+            position: absolute;
+            top: 0;
+            left: 0;
             display: flex;
-            flex-direction: row;
-            align-items: center;
+            flex-direction: column;
+            color: #fff;
+            box-sizing: border-box;
         }
 
+        /* Fascia superiore con il titolo */
+        #header {
+            height: 110px;
+            background-color: #cc0000;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        /* Area dove compare la notizia */
+        #content-area {
+            flex: 1;
+            padding: 40px 50px;
+            display: flex;
+            gap: 50px;
+            align-items: center;
+            /* Transizione fluida per il cambio notizia */
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+        }
+
+        /* Classe aggiunta da JS per l'effetto dissolvenza */
+        .fade-out {
+            opacity: 0 !important;
+        }
+
+        /* Contenitore della foto */
         #news-image-container {
             width: 450px;
-            height: 450px;
+            height: 400px;
             flex-shrink: 0;
-            border-radius: 15px;
+            background-color: #222;
+            border-radius: 16px;
             overflow: hidden;
-            background-color: #111;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
         #news-image {
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            display: none; /* Rimane nascosto se la notizia non ha un'immagine */
+            object-fit: cover; /* Taglia l'immagine in modo da riempire il riquadro senza deformarla */
         }
 
-        #news-content {
-            margin-left: 60px;
-            flex-grow: 1;
+        /* Testata giornalistica posizionata sopra la foto */
+        #news-source-badge {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #ffcc00;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        /* Area del testo */
+        #news-text {
+            flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
 
-        #news-source {
-            font-size: 38px;
-            color: #fca902; /* Colore acceso per identificare subito la testata (es. Targato CN) */
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 25px;
-        }
-
+        /* Titolo della notizia */
         #news-title {
-            font-size: 68px;
-            line-height: 1.15;
+            font-size: 52px;
+            line-height: 1.2;
             font-weight: bold;
+            margin-bottom: 25px;
+            /* Limita il titolo a max 3 righe */
             display: -webkit-box;
-            -webkit-line-clamp: 4; /* Limita a 4 righe per non sforare */
+            -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* Animazione di fade per il cambio notizia */
-        .fade-animation {
-            animation: fadeInOut 15s infinite; /* 15 secondi per ogni notizia */
+        /* Descrizione breve della notizia */
+        #news-description {
+            font-size: 34px;
+            line-height: 1.4;
+            color: #b0b0b0;
+            /* Limita la descrizione a max 2/3 righe */
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(20px); }
-            5% { opacity: 1; transform: translateY(0); }
-            95% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-20px); }
+        
+        /* Messaggio iniziale */
+        #loading-message {
+            font-size: 40px;
+            text-align: center;
+            width: 100%;
+            color: #888;
         }
     </style>
 </head>
 <body>
 
-    <div id="ledwall-container">
-        <div id="news-image-container">
-            <img id="news-image" src="" alt="Immagine News">
+<div id="widget-container">
+    <div id="header">
+        News Locali - Sommariva del Bosco e dintorni
+    </div>
+    
+    <div id="content-area">
+        <div id="loading-message">Caricamento notizie in corso...</div>
+        
+        <!-- Questi elementi sono nascosti finché non arrivano i dati -->
+        <div id="news-image-container" style="display: none;">
+            <img id="news-image" src="" alt="News Image">
+            <div id="news-source-badge">Fonte</div>
         </div>
-        <div id="news-content">
-            <div id="news-source">Inizializzazione...</div>
-            <div id="news-title">Ricerca ultime notizie dal territorio in corso...</div>
+        <div id="news-text" style="display: none;">
+            <div id="news-title">Titolo Notizia</div>
+            <div id="news-description">Descrizione della notizia...</div>
         </div>
     </div>
+</div>
 
-    <script>
-        /* 
-         * Siccome il codice è ospitato su GitHub Pages (client-side), le richieste dirette 
-         * ai file RSS delle testate vengono bloccate dai browser per motivi di sicurezza (CORS).
-         * Utilizziamo il servizio gratuito api.rss2json.com per convertire l'XML in JSON e bypassare il blocco.
-         */
-        const rssFeeds = [
-            // Inserisci qui i link RSS esatti facendoli precedere da "https://api.rss2json.com/v1/api.json?rss_url="
-            'https://api.rss2json.com/v1/api.json?rss_url=https://www.targatocn.it/rss/',
-            'https://api.rss2json.com/v1/api.json?rss_url=https://www.comune.sommarivadelbosco.cn.it/rss' 
-            // Aggiungi Il Nuovo Braidese, Il Carmagnolese, ecc. con la stessa formattazione
-        ];
+<script>
+    // Le fonti RSS locali
+    const rssFeeds = [
+        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml" },
+        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/" },
+        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/" },
+        { name: "Cuneo24", url: "https://www.cuneo24.it/feed/" },
+        { name: "La Guida", url: "https://www.laguida.it/feed/" },
+        { name: "ANSA Piemonte", url: "https://www.ansa.it/piemonte/notizie/piemonte_rss.xml" }
+    ];
 
-        let allNews = [];
-        let currentIndex = 0;
-        const displayDuration = 15000; // 15.000 millisecondi = 15 secondi a notizia
+    let newsItems = [];
+    let currentIndex = 0;
+    const DISPLAY_DURATION_MS = 30000; // 30 secondi per ogni notizia
 
-        async function fetchNews() {
-            let tempNewsArray = []; 
-            
-            for (let feedUrl of rssFeeds) {
-                try {
-                    const response = await fetch(feedUrl);
-                    const data = await response.json();
-                    
-                    if (data.status === 'ok') {
-                        // Preleva solo le prime 2 o 3 notizie per ogni ente per non appesantire il loop
-                        const topNews = data.items.slice(0, 2).map(item => {
-                            // Cerca l'immagine nel feed (spesso in enclosure o thumbnail)
-                            let imageUrl = null;
-                            if (item.enclosure && item.enclosure.link) {
-                                imageUrl = item.enclosure.link;
-                            } else if (item.thumbnail) {
-                                imageUrl = item.thumbnail;
-                            }
+    const contentArea = document.getElementById('content-area');
+    const loadingMessage = document.getElementById('loading-message');
+    const imageContainer = document.getElementById('news-image-container');
+    const textContainer = document.getElementById('news-text');
+    
+    const newsImage = document.getElementById('news-image');
+    const newsSourceBadge = document.getElementById('news-source-badge');
+    const newsTitle = document.getElementById('news-title');
+    const newsDescription = document.getElementById('news-description');
 
-                            return {
-                                title: item.title,
-                                source: data.feed.title || "News Locale",
-                                image: imageUrl
-                            };
+    // Funzione per pulire la descrizione da codici HTML (es. <p>, <a>, <img>)
+    function stripHtmlAndTruncate(html) {
+        let tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        let text = tmp.textContent || tmp.innerText || "";
+        return text.trim();
+    }
+
+    // Funzione per estrarre l'immagine
+    function extractImage(item) {
+        if (item.thumbnail && item.thumbnail.trim() !== "") return item.thumbnail;
+        if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) return item.enclosure.link;
+        // Cerca un'immagine dentro il contenuto HTML dell'articolo
+        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
+        let match = imgRegex.exec(item.content || item.description);
+        if (match && match[1]) return match[1];
+        // Immagine di fallback neutra se non c'è foto
+        return "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+    }
+
+    async function fetchAllNews() {
+        let tempNews = [];
+
+        for (const feed of rssFeeds) {
+            try {
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    // Prendi solo le prime 2/3 notizie per fonte per arrivare a ~15 totali
+                    const items = data.items.slice(0, 3); 
+                    items.forEach(item => {
+                        tempNews.push({
+                            source: feed.name,
+                            title: item.title,
+                            description: stripHtmlAndTruncate(item.description),
+                            image: extractImage(item),
+                            pubDate: new Date(item.pubDate)
                         });
-                        tempNewsArray = tempNewsArray.concat(topNews);
-                    }
-                } catch (error) {
-                    console.error("Errore nel caricamento di un feed:", error);
+                    });
                 }
-            }
-            
-            if (tempNewsArray.length > 0) {
-                allNews = tempNewsArray; // Aggiorna l'elenco principale solo se ha trovato qualcosa
+            } catch (error) {
+                console.error("Errore nel caricamento del feed:", feed.name);
             }
         }
 
-        function updateDisplay() {
-            if (allNews.length === 0) return;
-
-            const news = allNews[currentIndex];
-            const container = document.getElementById('ledwall-container');
+        if (tempNews.length > 0) {
+            // Ordina le notizie dalla più recente alla più vecchia
+            tempNews.sort((a, b) => b.pubDate - a.pubDate);
+            // Limitiamo a un massimo di 15 notizie in totale
+            newsItems = tempNews.slice(0, 15);
             
-            // Riavvia l'animazione CSS
-            container.classList.remove('fade-animation');
-            void container.offsetWidth; // Forza il reflow del browser
-            container.classList.add('fade-animation');
+            // Inizia il ciclo
+            currentIndex = 0;
+            showNews();
+        } else {
+            loadingMessage.innerHTML = "Impossibile caricare le notizie in questo momento.";
+        }
+    }
 
-            // Popola i testi
-            document.getElementById('news-source').innerText = news.source;
-            document.getElementById('news-title').innerText = news.title;
+    function showNews() {
+        if (newsItems.length === 0) return;
 
-            // Gestisce l'immagine
-            const imgElement = document.getElementById('news-image');
-            if (news.image) {
-                imgElement.src = news.image;
-                imgElement.style.display = 'block';
-            } else {
-                imgElement.style.display = 'none';
+        const currentNews = newsItems[currentIndex];
+
+        // Nasconde il loading
+        loadingMessage.style.display = 'none';
+        
+        // Applica l'effetto dissolvenza per nascondere la notizia precedente
+        contentArea.classList.add('fade-out');
+
+        setTimeout(() => {
+            // Cambia i contenuti mentre è in dissolvenza (invisibile)
+            newsImage.src = currentNews.image;
+            newsSourceBadge.textContent = currentNews.source;
+            newsTitle.textContent = currentNews.title;
+            newsDescription.textContent = currentNews.description;
+
+            imageContainer.style.display = 'flex';
+            textContainer.style.display = 'flex';
+
+            // Fa ricomparire la nuova notizia
+            contentArea.classList.remove('fade-out');
+
+            // Prepara il prossimo indice
+            currentIndex++;
+            if (currentIndex >= newsItems.length) {
+                currentIndex = 0; // Ricomincia da capo
             }
+        }, 1000); // 1 secondo di transizione per il fade-out
+    }
 
-            // Passa alla notizia successiva, tornando alla prima se è finito l'array
-            currentIndex = (currentIndex + 1) % allNews.length;
-        }
+    // Avvia la prima lettura
+    fetchAllNews();
 
-        // Funzione di avvio
-        async function init() {
-            await fetchNews(); // Scarica le notizie la prima volta
-            updateDisplay();   // Mostra subito la prima
-            
-            // Imposta i timer
-            setInterval(updateDisplay, displayDuration); // Cambia notizia ogni 15 secondi
-            setInterval(fetchNews, 3600000); // Ricarica i feed RSS da capo ogni ora (3.600.000 ms)
-        }
+    // Cambia notizia ogni 30 secondi
+    setInterval(showNews, DISPLAY_DURATION_MS);
 
-        init();
-    </script>
+    // Ricarica nuovi feed dai siti ogni 2 ore per mantenere le notizie fresche 
+    // (senza ricaricare la pagina web)
+    setInterval(fetchAllNews, 7200000);
+
+</script>
 
 </body>
 </html>
