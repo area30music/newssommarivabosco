@@ -81,7 +81,7 @@
             flex: 1;
             display: flex;
             gap: 45px; 
-            align-items: center; 
+            align-items: center; /* Centrato verticalmente rispetto alla foto */
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             padding-left: 10px;
@@ -90,7 +90,7 @@
 
         .fade-out { opacity: 0 !important; }
 
-        /* Immagine ottimizzata */
+        /* Immagine stabile e proporzionata */
         #news-image-wrapper {
             width: 440px;
             height: 400px; 
@@ -112,24 +112,23 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center; 
+            justify-content: center; /* Ottimizza lo spazio a fianco della foto */
             padding-right: 20px;
-            height: 440px; 
+            height: 400px; 
             overflow: hidden;
         }
 
-        /* Titolo ridimensionato leggermente per fare in modo che entri sempre completo senza mai troncare */
+        /* Il font-size viene gestito dinamicamente da JavaScript in base alla lunghezza del testo */
         #news-title {
-            font-size: 38px; 
             font-weight: 800;
             color: var(--text-main);
-            line-height: 1.25;
+            line-height: 1.2;
             display: -webkit-box;
             -webkit-line-clamp: 6;
             line-clamp: 6;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            transition: color 1s ease;
+            transition: color 1s ease, font-size 0.3s ease;
         }
 
         #news-source {
@@ -179,7 +178,7 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
+                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80'">
             </div>
             
             <div id="news-text-wrapper" style="display: none;">
@@ -262,17 +261,17 @@
         return false;
     }
 
-    // SELETTORE INTELLIGENTE DI IMMAGINI IN BASE AL TITOLO (Anti-Hotlinked / Anti-Divieto)
+    // SELETTORE INTELLIGENTE DI IMMAGINI A TEMA IN BASE AL TITOLO
     function getSmartImageByTitle(title) {
         let t = title.toLowerCase();
-        if (/calcio|partita|mister|serie|fbc|fc|sport|sconfitta|vittoria|gol|squadra|giocatori/i.test(t)) {
-            return "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80"; // Immagine Sport/Calcio
-        } else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba/i.test(t)) {
-            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Immagine Cibo/Mercato
+        if (/calcio|partita|mister|serie|fbc|fc|sport|sconfitta|vittoria|gol|squadra|giocatori|Asta|mister Asta/i.test(t)) {
+            return "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80"; // Campo da calcio / Sport
+        } else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba|bra|bra's/i.test(t)) {
+            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Cibo / Mercato / Gastronomia
         } else if (/comune|sindaco|regione|politica|consiglio|amministrazione|ente|provincia|elezioni/i.test(t)) {
-            return "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"; // Immagine Istituzionale/Municipio
+            return "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"; // Municipio / Istituzionale
         } else {
-            return "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=800&q=80"; // Immagine News/Giornale generica di qualità
+            return "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"; // Paesaggio / Territorio di qualità
         }
     }
 
@@ -289,7 +288,7 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se l'immagine manca, è corrotta, è un pixel di tracciamento o è il blocco "hotlinked" (divieto)
+        // Se l'immagine manca, è corrotta, è un pixel invisibile, o è il blocco "hotlinked" (divieto)
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked/i.test(imgUrl)) {
             return getSmartImageByTitle(title);
         }
@@ -352,6 +351,19 @@
             elImage.src = currentNews.image;
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
+
+            // ADATTATORE DINAMICO DELLA DIMENSIONE DEL FONT DEL TITOLO
+            // Ottimizza lo spazio a seconda della lunghezza per evitare spazi vuoti o troncamenti
+            let len = currentNews.title.length;
+            if (len < 50) {
+                elTitle.style.fontSize = "48px";
+            } else if (len < 90) {
+                elTitle.style.fontSize = "42px";
+            } else if (len < 140) {
+                elTitle.style.fontSize = "36px";
+            } else {
+                elTitle.style.fontSize = "31px";
+            }
 
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
