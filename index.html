@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News Locali - Sommariva del Bosco</title>
     <style>
-        /* Variabili di colore: Modalità Scura (Default) */
+        /* Variabili di colore: Modalità Scura */
         :root {
             --page-bg: #000000;
             --widget-bg: #11151e;
@@ -42,7 +42,6 @@
             transition: background-color 1s ease;
         }
 
-        /* Wrapper per la scala e il centramento sul LEDwall */
         #scaler {
             width: 1240px;
             height: 700px;
@@ -51,7 +50,6 @@
             display: flex;
         }
 
-        /* Stile del Widget principale */
         #widget-container {
             position: relative; 
             width: 100%;
@@ -67,7 +65,6 @@
             transition: all 1s ease;
         }
 
-        /* Intestazione su una riga */
         #header {
             margin-bottom: 35px;
             font-size: 46px;
@@ -77,15 +74,9 @@
             line-height: 1;
         }
 
-        #header .blue-text {
-            color: var(--accent-blue);
-        }
+        #header .blue-text { color: var(--accent-blue); }
+        #header .white-text { color: var(--text-main); }
 
-        #header .white-text {
-            color: var(--text-main);
-        }
-
-        /* Area contenuti e transizioni */
         #content-area {
             flex: 1;
             display: flex;
@@ -96,11 +87,8 @@
             padding-left: 10px;
         }
 
-        .fade-out {
-            opacity: 0 !important;
-        }
+        .fade-out { opacity: 0 !important; }
 
-        /* Immagine ingrandita in altezza */
         #news-image-wrapper {
             width: 400px;
             height: 340px; 
@@ -118,35 +106,29 @@
             object-fit: cover;
         }
 
-        /* Testo della notizia - Impostato per contenere quanto più testo possibile */
         #news-text-wrapper {
             flex: 1;
             display: flex;
             flex-direction: column;
             padding-right: 20px;
-            height: 480px; /* Limite per evitare che testi troppo lunghi escano dal riquadro */
+            height: 480px; 
             overflow: hidden;
         }
 
-        /* Titolo della notizia - COMPLETAMENTE VISIBILE */
         #news-title {
             font-size: 50px;
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
             margin-bottom: 20px;
-            /* Nessun blocco di righe, il titolo va a capo e si mostra sempre intero */
         }
 
-        /* Descrizione dettagliata - COMPLETAMENTE VISIBILE fino a riempimento */
         #news-description {
             font-size: 27px;
             color: var(--text-sec);
             line-height: 1.45;
-            /* Nessun blocco, il testo riempie lo spazio del text-wrapper in altezza */
         }
 
-        /* Etichetta della Fonte in basso a sinistra */
         #news-source {
             position: absolute;
             bottom: 40px;
@@ -167,9 +149,7 @@
             color: var(--text-sec);
         }
 
-        .show-content {
-            opacity: 1 !important;
-        }
+        .show-content { opacity: 1 !important; }
 
         #loading-message {
             font-size: 32px;
@@ -209,7 +189,6 @@
 </div>
 
 <script>
-    // Gestione Tema Chiaro/Scuro in base all'ora
     function updateTheme() {
         const hour = new Date().getHours();
         if (hour >= 7 && hour < 19) {
@@ -222,19 +201,22 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // 1. Google News impostato appositamente su Sommariva del Bosco (Priorità Massima)
-    // 2. Testate locali limitrofe
+    // =======================================================================
+    // IMPOSTAZIONI DEI FEED E DEL PONTE AUTOMATICO
+    // =======================================================================
     const rssFeeds = [
-        { name: "News Sommariva del Bosco", url: "https://news.google.com/rss/search?q=Sommariva+del+Bosco&hl=it&gl=IT&ceid=IT:it", isLocal: true },
-        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", isLocal: false },
-        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", isLocal: false },
-        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", isLocal: false },
-        { name: "La Guida", url: "https://www.laguida.it/feed/", isLocal: false }
+        // Ponte integrato: forza il recupero delle ultime 2 notizie/comunicazioni sul Comune di Sommariva
+        { name: "Comune Sommariva Bosco", url: "https://news.google.com/rss/search?q=Comune+Sommariva+del+Bosco+eventi+OR+cronaca+OR+comunicazione&hl=it&gl=IT&ceid=IT:it", isLocal: true, limit: 2 },
+        // Altre fonti del territorio (langhe, roero, cuneese)
+        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", isLocal: false, limit: 3 },
+        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", isLocal: false, limit: 3 },
+        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", isLocal: false, limit: 2 },
+        { name: "La Guida", url: "https://www.laguida.it/feed/", isLocal: false, limit: 2 }
     ];
 
     let newsItems = [];
     let currentIndex = 0;
-    const DISPLAY_DURATION = 15000; // 15 secondi per notizia
+    const DISPLAY_DURATION = 15000; // 15 secondi a notizia
 
     const contentArea = document.getElementById('content-area');
     const elSource = document.getElementById('news-source');
@@ -246,7 +228,13 @@
     const elTitle = document.getElementById('news-title');
     const elDesc = document.getElementById('news-description');
 
-    // Rimuove tag HTML e codici sporchi dal testo
+    // Filtro anti-pubblicità e notizie non desiderate
+    const spamKeywords = [
+        "dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", 
+        "visita specialistica", "pubblicità", "promozione", "sponsorizzato", 
+        "offerta", "sconto", "commerciale", "marketing", "dentista", "clinica"
+    ];
+
     function cleanHTML(html) {
         if (!html) return "";
         let tmp = document.createElement("DIV");
@@ -254,40 +242,62 @@
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
-    // Ricostruisce la frase in modo che sia lunga, riempia lo spazio e finisca in modo pulito col punto
-    function formatDescription(text) {
-        // Elimina i puntini di sospensione fastidiosi inseriti alla fine dalle redazioni
-        text = text.replace(/\.{3}$|\[\.\.\.\]$\vert{}\.\.\.$/g, '').trim();
+    function isAdOrSpam(title, description) {
+        let content = (title + " " + description).toLowerCase();
+        return spamKeywords.some(keyword => content.includes(keyword));
+    }
 
-        // Limite ampio per sfruttare bene il box del LEDwall
+    // Filtro per escludere le notizie identiche (es. stessa notizia su più giornali)
+    function isDuplicate(newTitle, existingNews) {
+        let newWords = newTitle.toLowerCase().split(/\W+/).filter(w => w.length > 4);
+        
+        for (let item of existingNews) {
+            let existingWords = item.title.toLowerCase().split(/\W+/).filter(w => w.length > 4);
+            let matches = 0;
+            
+            for (let word of newWords) {
+                if (existingWords.includes(word)) matches++;
+            }
+            
+            // Se almeno 3 parole chiave corrispondono, lo consideriamo un duplicato e lo scartiamo
+            if (matches >= 3 && newWords.length > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Costruisce la descrizione finendo sempre in modo pulito con il punto fermo
+    function formatDescription(text) {
+        // Pulisce la fine del testo dai classici tre puntini di sospensione
+        text = text.replace(/\.{3}$|\[\.\.\.\]$\vert{}\.\.\.$/g, '').trim();
         const MAX_LENGTH = 600; 
+        
         if (text.length <= MAX_LENGTH) {
             return text.endsWith('.') ? text : text + '.';
         }
         
         let truncated = text.substring(0, MAX_LENGTH);
-        // Cerca l'ultimo punto per chiudere la frase perfettamente
         let lastPeriodIndex = truncated.lastIndexOf('.');
         
+        // Cerca l'ultimo punto utile per tagliare elegantemente la frase
         if (lastPeriodIndex > (MAX_LENGTH * 0.4)) {
             return truncated.substring(0, lastPeriodIndex + 1);
         } else {
-            // Se non c'è un punto sfruttabile, si ferma alla fine di una parola e aggiunge il punto manualmente
             let lastSpaceIndex = truncated.lastIndexOf(' ');
             return (lastSpaceIndex > 0 ? truncated.substring(0, lastSpaceIndex) : truncated) + '.';
         }
     }
 
+    // Cerca o assegna una foto alla notizia
     function extractImage(item) {
-        // Cerca la foto ufficiale della testata
         if (item.thumbnail && item.thumbnail.trim() !== "") return item.thumbnail;
         if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) return item.enclosure.link;
-        // Cerca nel codice dell'articolo
         const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
         let match = imgRegex.exec(item.content || item.description);
         if (match && match[1]) return match[1];
-        // Immagine di repertorio elegante (giornale in bianco e nero) se la notizia non ha foto
-        return "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+        // Immagine di repertorio a tema istituzionale/territoriale se manca la foto originale
+        return "https://images.unsplash.com/photo-1596395819057-cb34d4a8264d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
     }
 
     async function fetchAllNews() {
@@ -295,23 +305,27 @@
 
         for (const feed of rssFeeds) {
             try {
+                // Utilizza il convertitore API rss2json per scavalcare i blocchi dei browser
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
                 const response = await fetch(apiUrl);
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    // Preleva più notizie se è locale, meno dalle altre
-                    const itemsToFetch = feed.isLocal ? 8 : 2; 
-                    const items = data.items.slice(0, itemsToFetch); 
+                    // Prende il numero esatto di notizie impostato nel parametro 'limit'
+                    const items = data.items.slice(0, feed.limit); 
                     
                     items.forEach(item => {
-                        // Cerca di estrarre l'articolo completo se disponibile (item.content), altrimenti la descrizione
                         let rawText = item.content ? item.content : item.description;
                         let cleanText = cleanHTML(rawText);
+                        let cleanTitle = cleanHTML(item.title);
+                        
+                        // Applica i controlli anti-pubblicità e anti-doppioni
+                        if (isAdOrSpam(cleanTitle, cleanText)) return;
+                        if (isDuplicate(cleanTitle, tempNews)) return;
                         
                         tempNews.push({
                             source: feed.name,
-                            title: cleanHTML(item.title),
+                            title: cleanTitle,
                             description: formatDescription(cleanText),
                             image: extractImage(item),
                             pubDate: new Date(item.pubDate),
@@ -325,7 +339,7 @@
         }
 
         if (tempNews.length > 0) {
-            // Ordina: PRIMA tutte le notizie di Sommariva, POI le altre per data
+            // Le notizie locali (Il Comune) scavalcano quelle generali e vengono messe sempre in testa
             tempNews.sort((a, b) => {
                 if (a.isLocal && !b.isLocal) return -1;
                 if (!a.isLocal && b.isLocal) return 1;
@@ -346,6 +360,7 @@
         const currentNews = newsItems[currentIndex];
         loadingMessage.style.display = 'none';
         
+        // Dissolvenza in uscita
         contentArea.classList.add('fade-out');
         elSource.classList.remove('show-content');
 
@@ -358,18 +373,25 @@
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
 
+            // Dissolvenza in entrata
             contentArea.classList.remove('fade-out');
             elSource.classList.add('show-content');
 
+            // Ruota al prossimo indice (e ricomincia da zero se arrivati in fondo)
             currentIndex++;
             if (currentIndex >= newsItems.length) currentIndex = 0;
             
         }, 800); 
     }
 
+    // Carica subito i dati
     fetchAllNews();
+    
+    // Cambia notizia sullo schermo ogni 15 secondi
     setInterval(showNews, DISPLAY_DURATION);
-    setInterval(fetchAllNews, 3600000); // Ricarica le notizie in background ogni ora
+    
+    // Cerca nuove notizie in background ogni ora e sostituisce automaticamente le più vecchie
+    setInterval(fetchAllNews, 3600000); 
 
 </script>
 
