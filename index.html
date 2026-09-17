@@ -53,7 +53,7 @@
 
         /* Stile del Widget principale */
         #widget-container {
-            position: relative; /* Necessario per posizionare gli elementi in basso */
+            position: relative; 
             width: 100%;
             height: 100%;
             background-color: var(--widget-bg);
@@ -69,7 +69,7 @@
 
         /* Intestazione su una riga */
         #header {
-            margin-bottom: 40px;
+            margin-bottom: 35px;
             font-size: 46px;
             font-weight: 800;
             text-transform: uppercase;
@@ -89,7 +89,7 @@
         #content-area {
             flex: 1;
             display: flex;
-            gap: 45px; /* Spazio tra foto e testo */
+            gap: 45px; 
             align-items: flex-start;
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
@@ -100,16 +100,16 @@
             opacity: 0 !important;
         }
 
-        /* Immagine della notizia posizionata in alto a sinistra */
+        /* Immagine ingrandita in altezza per sfruttare lo spazio vuoto */
         #news-image-wrapper {
             width: 400px;
-            height: 300px;
+            height: 340px; 
             border-radius: 20px;
             overflow: hidden;
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             background-color: var(--widget-border);
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
         #news-image {
@@ -124,37 +124,40 @@
             display: flex;
             flex-direction: column;
             padding-right: 20px;
-            /* Permettiamo al testo di occupare più spazio in altezza */
-            height: 500px; 
         }
 
-        /* Titolo ingrandito */
+        /* Titolo della notizia */
         #news-title {
-            font-size: 54px;
+            font-size: 50px;
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             display: -webkit-box;
-            -webkit-line-clamp: 4; 
-            line-clamp: 4;
+            -webkit-line-clamp: 3; 
+            line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
-        /* Descrizione. Rimosso il line-clamp CSS, ora lo gestisce il JavaScript con il punto */
+        /* Descrizione dettagliata che sfrutta lo spazio e termina col punto */
         #news-description {
-            font-size: 28px;
+            font-size: 27px;
             color: var(--text-sec);
-            line-height: 1.5;
+            line-height: 1.45;
+            display: -webkit-box;
+            -webkit-line-clamp: 5;
+            line-clamp: 5;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
-        /* Etichetta della Fonte spostata IN BASSO A SINISTRA sotto l'immagine */
+        /* Etichetta della Fonte in basso a sinistra */
         #news-source {
             position: absolute;
-            bottom: 45px;
-            left: 55px; /* Esattamente sotto l'immagine, lato sinistro */
-            font-size: 28px;
+            bottom: 40px;
+            left: 55px; 
+            font-size: 26px;
             font-weight: 700;
             color: var(--accent-orange);
             display: flex;
@@ -164,14 +167,12 @@
             transition: opacity 0.8s ease-in-out;
         }
 
-        /* Puntino estetico prima della fonte */
         #news-source::before {
             content: "(•)";
-            font-size: 20px;
+            font-size: 18px;
             color: var(--text-sec);
         }
 
-        /* Classe per l'animazione di entrata */
         .show-content {
             opacity: 1 !important;
         }
@@ -208,7 +209,6 @@
             </div>
         </div>
 
-        <!-- Fonte ancorata in basso a sinistra (sotto il vuoto dell'immagine) -->
         <div id="news-source">Fonte</div>
 
     </div>
@@ -228,8 +228,9 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // Fonti strettamente locali, rimosse le testate generaliste regionali/nazionali
+    // Fonti locali con priorità assoluta al Comune di Sommariva del Bosco
     const rssFeeds = [
+        { name: "Comune Sommariva Bosco", url: "https://www.comune.sommarivadelbosco.cn.it/log" },
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml" },
         { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/" },
         { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/" },
@@ -239,7 +240,7 @@
 
     let newsItems = [];
     let currentIndex = 0;
-    const DISPLAY_DURATION = 30000; // 30 secondi
+    const DISPLAY_DURATION = 15000; // Impostato a 15 secondi per uno scorrimento più rapido
 
     const contentArea = document.getElementById('content-area');
     const elSource = document.getElementById('news-source');
@@ -251,46 +252,35 @@
     const elTitle = document.getElementById('news-title');
     const elDesc = document.getElementById('news-description');
 
-    // Estrae e pulisce il testo dal codice HTML
     function cleanHTML(html) {
         let tmp = document.createElement("DIV");
         tmp.innerHTML = html;
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
-    // Funzione per tagliare il testo a una frase completa finendo con il punto
+    // Assicura che la frase finisca sempre con un punto
     function formatDescription(text) {
-        const MAX_LENGTH = 380; // Lunghezza massima del testo
-        
+        const MAX_LENGTH = 320;
         if (text.length <= MAX_LENGTH) {
-            // Se è già corto, ci assicuriamo solo che finisca col punto
             return text.endsWith('.') ? text : text + '.';
         }
-
-        // Tagliamo grezzamente alla lunghezza massima
         let truncated = text.substring(0, MAX_LENGTH);
-        
-        // Cerchiamo l'ultimo punto all'interno del testo tagliato
         let lastPeriodIndex = truncated.lastIndexOf('.');
-
-        // Se troviamo un punto nella seconda metà del testo, tagliamo la frase lì
-        if (lastPeriodIndex > (MAX_LENGTH * 0.5)) {
+        if (lastPeriodIndex > (MAX_LENGTH * 0.4)) {
             return truncated.substring(0, lastPeriodIndex + 1);
         } else {
-            // Se non ci sono punti utili, tagliamo all'ultimo spazio per non spezzare parole e aggiungiamo un punto
             let lastSpaceIndex = truncated.lastIndexOf(' ');
-            return truncated.substring(0, lastSpaceIndex) + '.';
+            return (lastSpaceIndex > 0 ? truncated.substring(0, lastSpaceIndex) : truncated) + '.';
         }
     }
 
-    // Ricerca dell'immagine
     function extractImage(item) {
         if (item.thumbnail && item.thumbnail.trim() !== "") return item.thumbnail;
         if (item.enclosure && item.enclosure.link && item.enclosure.type.startsWith('image/')) return item.enclosure.link;
         const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
         let match = imgRegex.exec(item.content || item.description);
         if (match && match[1]) return match[1];
-        // Immagine segnaposto neutra se la notizia non ha foto
+        // Immagine di fallback coerente con il territorio
         return "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
     }
 
@@ -304,16 +294,16 @@
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    // Preleva le prime 4 notizie da ogni testata locale
                     const items = data.items.slice(0, 4); 
                     items.forEach(item => {
-                        let cleanText = cleanHTML(item.description);
+                        let cleanText = cleanHTML(item.description || item.content);
                         tempNews.push({
                             source: feed.name,
                             title: item.title,
                             description: formatDescription(cleanText),
                             image: extractImage(item),
-                            pubDate: new Date(item.pubDate)
+                            pubDate: new Date(item.pubDate),
+                            isMunicipal: feed.name.includes("Comune") // Identifica le notizie istituzionali
                         });
                     });
                 }
@@ -323,8 +313,13 @@
         }
 
         if (tempNews.length > 0) {
-            // Riordina mescolando le notizie in base all'orario
-            tempNews.sort((a, b) => b.pubDate - a.pubDate);
+            // Ordina mettendo per prime le notizie del Comune, poi le più recenti
+            tempNews.sort((a, b) => {
+                if (a.isMunicipal && !b.isMunicipal) return -1;
+                if (!a.isMunicipal && b.isMunicipal) return 1;
+                return b.pubDate - a.pubDate;
+            });
+
             newsItems = tempNews.slice(0, 15);
             currentIndex = 0;
             showNews();
@@ -339,12 +334,10 @@
         const currentNews = newsItems[currentIndex];
         loadingMessage.style.display = 'none';
         
-        // Dissolvenza in uscita
         contentArea.classList.add('fade-out');
         elSource.classList.remove('show-content');
 
         setTimeout(() => {
-            // Aggiorna i dati mentre sono invisibili
             elImage.src = currentNews.image;
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
@@ -353,7 +346,6 @@
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
 
-            // Dissolvenza in entrata
             contentArea.classList.remove('fade-out');
             elSource.classList.add('show-content');
 
