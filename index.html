@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Sommariva del Bosco</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000; /* Sfondo nero essenziale per il contrasto sul LEDwall */
+            color: #fff;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #ledwall-container {
+            /* Dimensioni e scala richieste */
+            width: 1240px;
+            height: 700px;
+            transform: scale(0.55);
+            transform-origin: top left;
+            
+            position: relative;
+            box-sizing: border-box;
+            padding: 50px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+
+        #news-image-container {
+            width: 450px;
+            height: 450px;
+            flex-shrink: 0;
+            border-radius: 15px;
+            overflow: hidden;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #news-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none; /* Rimane nascosto se la notizia non ha un'immagine */
+        }
+
+        #news-content {
+            margin-left: 60px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #news-source {
+            font-size: 38px;
+            color: #ffaa00; /* Colore acceso per identificare subito la testata (es. Targato CN) */
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+        }
+
+        #news-title {
+            font-size: 68px;
+            line-height: 1.15;
+            font-weight: bold;
+            display: -webkit-box;
+            -webkit-line-clamp: 4; /* Limita a 4 righe per non sforare */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Animazione di fade per il cambio notizia */
+        .fade-animation {
+            animation: fadeInOut 15s infinite; /* 15 secondi per ogni notizia */
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            5% { opacity: 1; transform: translateY(0); }
+            95% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ledwall-container">
+        <div id="news-image-container">
+            <img id="news-image" src="" alt="Immagine News">
+        </div>
+        <div id="news-content">
+            <div id="news-source">Inizializzazione...</div>
+            <div id="news-title">Ricerca ultime notizie dal territorio in corso...</div>
+        </div>
+    </div>
+
+    <script>
+        /* 
+         * Siccome il codice è ospitato su GitHub Pages (client-side), le richieste dirette 
+         * ai file RSS delle testate vengono bloccate dai browser per motivi di sicurezza (CORS).
+         * Utilizziamo il servizio gratuito api.rss2json.com per convertire l'XML in JSON e bypassare il blocco.
+         */
+        const rssFeeds = [
+            // Inserisci qui i link RSS esatti facendoli precedere da "https://api.rss2json.com/v1/api.json?rss_url="
+            'https://api.rss2json.com/v1/api.json?rss_url=https://www.targatocn.it/rss/',
+            'https://api.rss2json.com/v1/api.json?rss_url=https://www.comune.sommarivadelbosco.cn.it/rss' 
+            // Aggiungi Il Nuovo Braidese, Il Carmagnolese, ecc. con la stessa formattazione
+        ];
+
+        let allNews = [];
+        let currentIndex = 0;
+        const displayDuration = 15000; // 15.000 millisecondi = 15 secondi a notizia
+
+        async function fetchNews() {
+            let tempNewsArray = []; 
+            
+            for (let feedUrl of rssFeeds) {
+                try {
+                    const response = await fetch(feedUrl);
+                    const data = await response.json();
+                    
+                    if (data.status === 'ok') {
+                        // Preleva solo le prime 2 o 3 notizie per ogni ente per non appesantire il loop
+                        const topNews = data.items.slice(0, 2).map(item => {
+                            // Cerca l'immagine nel feed (spesso in enclosure o thumbnail)
+                            let imageUrl = null;
+                            if (item.enclosure && item.enclosure.link) {
+                                imageUrl = item.enclosure.link;
+                            } else if (item.thumbnail) {
+                                imageUrl = item.thumbnail;
+                            }
+
+                            return {
+                                title: item.title,
+                                source: data.feed.title || "News Locale",
+                                image: imageUrl
+                            };
+                        });
+                        tempNewsArray = tempNewsArray.concat(topNews);
+                    }
+                } catch (error) {
+                    console.error("Errore nel caricamento di un feed:", error);
+                }
+            }
+            
+            if (tempNewsArray.length > 0) {
+                allNews = tempNewsArray; // Aggiorna l'elenco principale solo se ha trovato qualcosa
+            }
+        }
+
+        function updateDisplay() {
+            if (allNews.length === 0) return;
+
+            const news = allNews[currentIndex];
+            const container = document.getElementById('ledwall-container');
+            
+            // Riavvia l'animazione CSS
+            container.classList.remove('fade-animation');
+            void container.offsetWidth; // Forza il reflow del browser
+            container.classList.add('fade-animation');
+
+            // Popola i testi
+            document.getElementById('news-source').innerText = news.source;
+            document.getElementById('news-title').innerText = news.title;
+
+            // Gestisce l'immagine
+            const imgElement = document.getElementById('news-image');
+            if (news.image) {
+                imgElement.src = news.image;
+                imgElement.style.display = 'block';
+            } else {
+                imgElement.style.display = 'none';
+            }
+
+            // Passa alla notizia successiva, tornando alla prima se è finito l'array
+            currentIndex = (currentIndex + 1) % allNews.length;
+        }
+
+        // Funzione di avvio
+        async function init() {
+            await fetchNews(); // Scarica le notizie la prima volta
+            updateDisplay();   // Mostra subito la prima
+            
+            // Imposta i timer
+            setInterval(updateDisplay, displayDuration); // Cambia notizia ogni 15 secondi
+            setInterval(fetchNews, 3600000); // Ricarica i feed RSS da capo ogni ora (3.600.000 ms)
+        }
+
+        init();
+    </script>
+
+</body>
+</html>
