@@ -5,26 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News Locali - Sommariva del Bosco</title>
     <style>
-        /* Variabili di colore: Modalità Scura */
+        /* Variabili di colore: Modalità Scura (Stile iOS Dark) */
         :root {
             --page-bg: #000000;
-            --widget-bg: #11151e;
-            --widget-border: #1f2533;
+            --widget-bg: #1c1c1e;
+            --widget-border: #2c2c2e;
             --text-main: #ffffff;
-            --text-sec: #9ca3af;
-            --accent-blue: #38bdf8;
-            --accent-orange: #f59e0b;
+            --text-sec: #98989d;
+            --accent-blue: #0a84ff;
+            --accent-orange: #ff9f0a;
         }
 
-        /* Variabili di colore: Modalità Chiara */
+        /* Variabili di colore: Modalità Chiara (Stile iOS Light) */
         body.light-mode {
-            --page-bg: #ffffff;
-            --widget-bg: #f8fafc;
-            --widget-border: #e2e8f0;
-            --text-main: #0f172a;
-            --text-sec: #64748b;
-            --accent-blue: #0284c7;
-            --accent-orange: #d97706;
+            --page-bg: #f2f2f7;
+            --widget-bg: #ffffff;
+            --widget-border: #e5e5ea;
+            --text-main: #000000;
+            --text-sec: #8e8e93;
+            --accent-blue: #007aff;
+            --accent-orange: #ff9500;
         }
 
         /* Layout generale e centramento */
@@ -74,8 +74,8 @@
             line-height: 1;
         }
 
-        #header .blue-text { color: var(--accent-blue); }
-        #header .white-text { color: var(--text-main); }
+        #header .blue-text { color: var(--accent-blue); transition: color 1s ease; }
+        #header .white-text { color: var(--text-main); transition: color 1s ease; }
 
         #content-area {
             flex: 1;
@@ -95,9 +95,10 @@
             border-radius: 20px;
             overflow: hidden;
             flex-shrink: 0;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             background-color: var(--widget-border);
             margin-top: 5px;
+            transition: border-color 1s ease, background-color 1s ease;
         }
 
         #news-image {
@@ -110,9 +111,9 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             padding-right: 20px;
             height: 480px; 
-            overflow: hidden;
         }
 
         #news-title {
@@ -121,18 +122,16 @@
             color: var(--text-main);
             line-height: 1.15;
             margin-bottom: 20px;
-            display: -webkit-box;
-            -webkit-line-clamp: 4; /* Margine massimo per titoli molto lunghi */
-            line-clamp: 4;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            display: block;
+            transition: color 1s ease;
         }
 
         #news-description {
             font-size: 27px;
             color: var(--text-sec);
             line-height: 1.45;
-            /* Rimosso il line-clamp CSS, ora la lunghezza la gestisce il Javascript a frasi intere */
+            display: block;
+            transition: color 1s ease;
         }
 
         #news-source {
@@ -146,13 +145,14 @@
             align-items: center;
             gap: 8px;
             opacity: 0;
-            transition: opacity 0.8s ease-in-out;
+            transition: opacity 0.8s ease-in-out, color 1s ease;
         }
 
         #news-source::before {
             content: "(•)";
             font-size: 18px;
             color: var(--text-sec);
+            transition: color 1s ease;
         }
 
         .show-content { opacity: 1 !important; }
@@ -164,6 +164,7 @@
             width: 100%;
             font-weight: 500;
             margin-top: 100px;
+            transition: color 1s ease;
         }
     </style>
 </head>
@@ -180,8 +181,7 @@
             <div id="loading-message">Sincronizzazione notizie in corso...</div>
             
             <div id="news-image-wrapper" style="display: none;">
-                <!-- Immagine di fallback assoluta in caso di errore di caricamento -->
-                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
+                <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
             </div>
             
             <div id="news-text-wrapper" style="display: none;">
@@ -196,6 +196,7 @@
 </div>
 
 <script>
+    // Gestione Tema Chiaro/Scuro (Dalle 07:00 alle 18:59 tema chiaro)
     function updateTheme() {
         const hour = new Date().getHours();
         if (hour >= 7 && hour < 19) {
@@ -206,7 +207,7 @@
     }
     
     updateTheme();
-    setInterval(updateTheme, 60000);
+    setInterval(updateTheme, 60000); // Controlla il tema ogni minuto
 
     const rssFeeds = [
         { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 4 },
@@ -266,49 +267,43 @@
         return false;
     }
 
-    // NUOVO ALGORITMO RIASSUNTO: Crea una descrizione perfetta a frasi intere, senza eccedere
     function buildSmartSummary(text) {
-        // Pulisce puntini fastidiosi
-        text = text.replace(/\.{2,}/g, '').trim(); 
+        text = cleanHTML(text);
+        text = text.replace(/(\.{3,}|\[\.\.\.\]|…)/g, '').trim(); 
         
-        // Divide in singole frasi basandosi sul punto fermo
-        let sentences = text.split('. ');
+        let parts = text.split(/\.\s+/);
         let summary = "";
-        const MAX_CHARS = 240; // Limite di sicurezza per non sforare mai in verticale (max ~4 righe)
-
-        for (let i = 0; i < sentences.length; i++) {
-            let sentence = sentences[i].trim();
-            if (!sentence) continue;
+        const MAX_CHARS = 250; 
+        
+        for (let i = 0; i < parts.length; i++) {
+            let part = parts[i].trim();
+            if (!part) continue;
             
-            // Rimette il punto a fine frase
-            if (!sentence.endsWith('.')) sentence += '.';
+            let isLastPart = (i === parts.length - 1);
+            let endsWithPeriod = text.trim().endsWith('.');
             
-            // Se aggiungendo questa frase superiamo lo spazio massimo...
-            if ((summary.length + sentence.length) > MAX_CHARS) {
-                // ...se abbiamo già almeno una frase completa salvata, ci fermiamo qui (riassunto perfetto).
+            if (isLastPart && !endsWithPeriod) {
                 if (summary.length > 0) {
-                    break;
-                } 
-                // ...se invece la primissima frase è lunghissima e sfora da sola, siamo costretti a tagliarla.
-                else {
-                    let words = sentence.split(' ');
-                    let temp = "";
-                    for(let w of words) {
-                        if (temp.length + w.length > (MAX_CHARS - 10)) break;
-                        temp += w + " ";
-                    }
-                    summary = temp.trim() + "...";
+                    break; 
+                } else {
+                    let words = part.split(' ');
+                    summary = words.slice(0, Math.min(words.length, 30)).join(' ') + ".";
                     break;
                 }
+            }
+            
+            let sentence = part + ".";
+            
+            if (summary.length > 0 && (summary.length + sentence.length) > MAX_CHARS) {
+                break;
             }
             
             summary += (summary.length > 0 ? " " : "") + sentence;
         }
         
-        return summary || "Dettagli aggiuntivi non disponibili.";
+        return summary.replace(/\.+$/, '.'); 
     }
 
-    // FILTRO IMMAGINI POTENZIATO: Scarta pixel di tracciamento e immagini rotte
     function extractImage(item) {
         let imgUrl = "";
         
@@ -322,10 +317,8 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se non c'è url o se contiene parole tipiche dei pixel di tracciamento invisibili (feedburner, 1x1, pixel, tracker)
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank/i.test(imgUrl)) {
-            // Immagine di repertorio bellissima a tema "News/Lettura"
-            return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+            return "https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
         }
         return imgUrl;
     }
