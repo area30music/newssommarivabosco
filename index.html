@@ -81,7 +81,7 @@
             flex: 1;
             display: flex;
             gap: 45px; 
-            align-items: center; /* Centrato verticalmente rispetto alla foto */
+            align-items: center; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             padding-left: 10px;
@@ -90,7 +90,6 @@
 
         .fade-out { opacity: 0 !important; }
 
-        /* Immagine stabile e proporzionata */
         #news-image-wrapper {
             width: 440px;
             height: 400px; 
@@ -112,17 +111,17 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Ottimizza lo spazio a fianco della foto */
+            justify-content: center; 
             padding-right: 20px;
             height: 400px; 
             overflow: hidden;
         }
 
-        /* Il font-size viene gestito dinamicamente da JavaScript in base alla lunghezza del testo */
+        /* Titolo flessibile senza tagli */
         #news-title {
             font-weight: 800;
             color: var(--text-main);
-            line-height: 1.2;
+            line-height: 1.15;
             display: -webkit-box;
             -webkit-line-clamp: 6;
             line-clamp: 6;
@@ -264,14 +263,16 @@
     // SELETTORE INTELLIGENTE DI IMMAGINI A TEMA IN BASE AL TITOLO
     function getSmartImageByTitle(title) {
         let t = title.toLowerCase();
-        if (/calcio|partita|mister|serie|fbc|fc|sport|sconfitta|vittoria|gol|squadra|giocatori|Asta|mister Asta/i.test(t)) {
+        if (/calcio|partita|mister|serie|fbc|fc|sport|sconfitta|vittoria|gol|squadra|giocatori|asta|fossano|albese/i.test(t)) {
             return "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80"; // Campo da calcio / Sport
-        } else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba|bra|bra's/i.test(t)) {
-            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Cibo / Mercato / Gastronomia
-        } else if (/comune|sindaco|regione|politica|consiglio|amministrazione|ente|provincia|elezioni/i.test(t)) {
+        } else if (/cibo|mangiare|slow|vino|tartufo|mercato|prodotti|sapori|ristorante|cucina|fiera|degustazione|cuneo|alba|bra|bra's|formaggio/i.test(t)) {
+            return "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"; // Cibo / Mercato / Slow Food
+        } else if (/comune|sindaco|regione|politica|consiglio|amministrazione|ente|provincia|elezioni|trifolao/i.test(t)) {
             return "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"; // Municipio / Istituzionale
+        } else if (/premio|carriera|vittorio|feltri|cinema|teatro|libri|mostra|artista|concerto|spettacolo/i.test(t)) {
+            return "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80"; // Spettacolo / Eventi / Cultura
         } else {
-            return "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"; // Paesaggio / Territorio di qualità
+            return "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"; // Territorio / Paesaggio
         }
     }
 
@@ -288,8 +289,8 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Se l'immagine manca, è corrotta, è un pixel invisibile, o è il blocco "hotlinked" (divieto)
-        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked/i.test(imgUrl)) {
+        // Rileva se l'immagine è mancante, corrotta, pixel di tracciamento o bloccata con cartello "hotlinked" / stop
+        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning/i.test(imgUrl)) {
             return getSmartImageByTitle(title);
         }
         return imgUrl;
@@ -352,17 +353,19 @@
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
 
-            // ADATTATORE DINAMICO DELLA DIMENSIONE DEL FONT DEL TITOLO
-            // Ottimizza lo spazio a seconda della lunghezza per evitare spazi vuoti o troncamenti
+            // ADATTATORE DINAMICO DEL FONT MOLTO PIÙ GRANDE E POTENTE
+            // Sfrutta al massimo lo spazio verticale accanto alla foto
             let len = currentNews.title.length;
-            if (len < 50) {
-                elTitle.style.fontSize = "48px";
-            } else if (len < 90) {
-                elTitle.style.fontSize = "42px";
-            } else if (len < 140) {
-                elTitle.style.fontSize = "36px";
+            if (len < 40) {
+                elTitle.style.fontSize = "56px"; // Titoli cortissimi enormi
+            } else if (len < 75) {
+                elTitle.style.fontSize = "48px"; // Titoli medi grandi
+            } else if (len < 115) {
+                elTitle.style.fontSize = "40px"; // Titoli lunghi
+            } else if (len < 160) {
+                elTitle.style.fontSize = "34px"; // Titoli molto lunghi
             } else {
-                elTitle.style.fontSize = "31px";
+                elTitle.style.fontSize = "29px"; // Titoli lunghissimi
             }
 
             imageWrapper.style.display = 'block';
