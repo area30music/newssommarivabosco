@@ -153,13 +153,7 @@
         .show-content { opacity: 1 !important; }
 
         #loading-message {
-            font-size: 32px;
-            color: var(--text-sec);
-            text-align: center;
-            width: 100%;
-            font-weight: 500;
-            margin-top: 100px;
-            transition: color 1s ease;
+            display: none; /* Disattivato per evitare schermate nere di attesa */
         }
     </style>
 </head>
@@ -173,18 +167,16 @@
         </div>
         
         <div id="content-area">
-            <div id="loading-message">Sincronizzazione notizie in corso...</div>
-            
-            <div id="news-image-wrapper" style="display: none;">
+            <div id="news-image-wrapper">
                 <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80'">
             </div>
             
-            <div id="news-text-wrapper" style="display: none;">
-                <div id="news-title">Titolo</div>
+            <div id="news-text-wrapper">
+                <div id="news-title">Caricamento notizie in corso...</div>
             </div>
         </div>
 
-        <div id="news-source">Fonte</div>
+        <div id="news-source" class="show-content">Sommariva News</div>
 
     </div>
 </div>
@@ -209,20 +201,18 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA (Fallback di sicurezza nel caso in cui il player blocchi le connessioni di rete)
-    const fallbackNews = [
+    // NOTIZIE DI RISERVA LOCALI (Partono istantaneamente senza dipendere dalla rete del LEDwall)
+    let newsItems = [
         { source: "Sommariva News", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
         { source: "Eventi Locali", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
         { source: "Notizie del Territorio", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", pubDate: new Date() }
     ];
 
-    let newsItems = [];
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
 
     const contentArea = document.getElementById('content-area');
     const elSource = document.getElementById('news-source');
-    const loadingMessage = document.getElementById('loading-message');
     const imageWrapper = document.getElementById('news-image-wrapper');
     const textWrapper = document.getElementById('news-text-wrapper');
     const elImage = document.getElementById('news-image');
@@ -241,7 +231,7 @@
         return (tmp.textContent || tmp.innerText || "").trim();
     }
 
-    function formatTitle(title, sourceName) {
+    function formatTitle(title) {
         let clean = cleanHTML(title);
         clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
         clean = clean.replace(/\s*[-|]\s*[A-Z][a-zA-Z\s]+$/i, '');
@@ -272,9 +262,7 @@
         if (sourceName === "Gazzetta d'Alba") {
             return NEWS_DEFAULT_IMAGE;
         }
-
         let imgUrl = "";
-        
         if (item.thumbnail && item.thumbnail.trim() !== "") {
             imgUrl = item.thumbnail;
         } else if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
@@ -284,7 +272,6 @@
             let match = imgRegex.exec(item.content || item.description);
             if (match && match[1]) imgUrl = match[1];
         }
-
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning|default/i.test(imgUrl)) {
             return NEWS_DEFAULT_IMAGE;
         }
@@ -296,17 +283,21 @@
 
         for (const feed of rssFeeds) {
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // Timeout di sicurezza a 3 secondi
+
                 const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
-                const response = await fetch(apiUrl);
+                const response = await fetch(apiUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
                 const data = await response.json();
 
                 if (data.status === 'ok') {
                     const items = data.items.slice(0, feed.limit); 
-                    
                     items.forEach(item => {
                         let rawText = item.content ? item.content : item.description;
                         let cleanText = cleanHTML(rawText);
-                        let cleanTitle = formatTitle(item.title, feed.name);
+                        let cleanTitle = formatTitle(item.title);
                         
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
                         if (isDuplicate(cleanTitle, tempNews)) return;
@@ -320,26 +311,21 @@
                     });
                 }
             } catch (error) {
-                console.error("Errore feed:", feed.name);
+                // Se la rete è bloccata o va in timeout, salta silenziosamente senza bloccare la pagina
             }
         }
 
-        // Se il lettore ha bloccato tutte le chiamate di rete, usa le notizie di riserva locali
-        if (tempNews.length === 0) {
-            tempNews = fallbackNews;
+        // Se ha scaricato nuove notizie online, aggiorna la lista in modo trasparente
+        if (tempNews.length > 0) {
+            tempNews.sort((a, b) => b.pubDate - a.pubDate);
+            newsItems = tempNews.slice(0, 15);
         }
-
-        tempNews.sort((a, b) => b.pubDate - a.pubDate);
-        newsItems = tempNews.slice(0, 15);
-        currentIndex = 0;
-        showNews();
     }
 
     function showNews() {
         if (newsItems.length === 0) return;
 
         const currentNews = newsItems[currentIndex];
-        loadingMessage.style.display = 'none';
         
         contentArea.classList.add('fade-out');
         elSource.classList.remove('show-content');
@@ -362,9 +348,6 @@
                 elTitle.style.fontSize = "30px"; 
             }
 
-            imageWrapper.style.display = 'block';
-            textWrapper.style.display = 'flex';
-
             contentArea.classList.remove('fade-out');
             elSource.classList.add('show-content');
 
@@ -374,8 +357,12 @@
         }, 800); 
     }
 
-    fetchAllNews();
+    // Avvia subito la visualizzazione con i dati locali per evitare schermate nere
+    showNews();
     setInterval(showNews, DISPLAY_DURATION);
+
+    // Prova a scaricare le notizie fresche in background
+    fetchAllNews();
     setInterval(fetchAllNews, 3600000); 
 
 </script>
