@@ -81,7 +81,7 @@
             flex: 1;
             display: flex;
             gap: 45px; 
-            align-items: flex-start;
+            align-items: center; /* Centrato verticalmente per valorizzare foto e titolo grande */
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             padding-left: 10px;
@@ -90,15 +90,15 @@
 
         .fade-out { opacity: 0 !important; }
 
+        /* Immagine ingrandita e proporzionata per sfruttare lo spazio verticale liberato */
         #news-image-wrapper {
-            width: 400px;
-            height: 340px; 
+            width: 440px;
+            height: 400px; 
             border-radius: 20px;
             overflow: hidden;
             flex-shrink: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             background-color: var(--widget-border);
-            margin-top: 0px; 
             transition: border-color 1s ease, background-color 1s ease;
         }
 
@@ -112,35 +112,21 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; 
+            justify-content: center; 
             padding-right: 20px;
-            height: 480px; 
+            height: 440px; 
             overflow: hidden;
         }
 
-        /* Titolo ottimizzato per stare sempre nel box senza sforare */
+        /* Titolo grande, esteso fino a 5 righe per accogliere tutto il testo senza tagli */
         #news-title {
-            font-size: 44px; 
+            font-size: 52px; 
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
-            margin-bottom: 15px;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
-            line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            transition: color 1s ease;
-        }
-
-        /* Descrizione bloccata a un numero sicuro di righe per non uscire mai dal rettangolo */
-        #news-description {
-            font-size: 24px;
-            color: var(--text-sec);
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 4;
-            line-clamp: 4;
+            -webkit-line-clamp: 5;
+            line-clamp: 5;
             -webkit-box-orient: vertical;
             overflow: hidden;
             transition: color 1s ease;
@@ -199,7 +185,6 @@
             
             <div id="news-text-wrapper" style="display: none;">
                 <div id="news-title">Titolo</div>
-                <div id="news-description">Descrizione...</div>
             </div>
         </div>
 
@@ -239,7 +224,6 @@
     const textWrapper = document.getElementById('news-text-wrapper');
     const elImage = document.getElementById('news-image');
     const elTitle = document.getElementById('news-title');
-    const elDesc = document.getElementById('news-description');
 
     const spamKeywords = [
         "dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", 
@@ -279,22 +263,6 @@
         return false;
     }
 
-    // Pulizia e formattazione impeccabile del testo descrittivo
-    function buildCleanDescription(text) {
-        text = cleanHTML(text);
-        // Rimuove puntini di sospensione e residui anomali
-        text = text.replace(/(\.{3,}|\[\.\.\.\]|…)/g, '').trim(); 
-        // Corregge errori di punteggiatura tipo ", ." o ",,"
-        text = text.replace(/,\s*\./g, '.');
-        text = text.replace(/\s{2,}/g, ' ');
-
-        if (text.length > 0 && !/[.!?]$/.test(text)) {
-            text += '.';
-        }
-        
-        return text;
-    }
-
     function extractImage(item) {
         let imgUrl = "";
         
@@ -308,7 +276,6 @@
             if (match && match[1]) imgUrl = match[1];
         }
 
-        // Filtro per scartare immagini hotlinked bloccate o pixel vuoti
         if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked/i.test(imgUrl)) {
             return "https://images.unsplash.com/photo-1495020689067-958852a7765e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
         }
@@ -329,7 +296,7 @@
                     
                     items.forEach(item => {
                         let rawText = item.content ? item.content : item.description;
-                        let cleanText = buildCleanDescription(rawText);
+                        let cleanText = cleanHTML(rawText);
                         let cleanTitle = formatTitle(item.title, feed.name);
                         
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
@@ -338,7 +305,6 @@
                         tempNews.push({
                             source: feed.name,
                             title: cleanTitle,
-                            description: cleanText,
                             image: extractImage(item),
                             pubDate: new Date(item.pubDate)
                         });
@@ -372,7 +338,6 @@
             elImage.src = currentNews.image;
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
-            elDesc.textContent = currentNews.description;
 
             imageWrapper.style.display = 'block';
             textWrapper.style.display = 'flex';
