@@ -18,7 +18,7 @@
 
         /* Variabili di colore: Modalità Chiara */
         body.light-mode {
-            --page-bg: #e5e5ea; /* Sfondo pagina per cornice */
+            --page-bg: #e5e5ea; 
             --widget-bg: #ffffff;
             --widget-border: #d1d1d6;
             --text-main: #000000;
@@ -42,11 +42,11 @@
             align-items: center;
         }
 
-        /* Il rettangolo della notizia - INGRANDITO */
+        /* Il rettangolo della notizia */
         #widget-container {
             position: relative;
-            width: 96vw;  /* Aumentato per ridurre lo spazio grigio ai lati */
-            height: 94vh; /* Aumentato per ridurre lo spazio grigio sopra/sotto */
+            width: 96vw;  
+            height: 94vh; 
             background-color: var(--widget-bg);
             border: 0.4vw solid var(--widget-border);
             border-radius: 4vh;
@@ -72,7 +72,7 @@
         #content-area {
             flex: 1;
             display: flex;
-            gap: 8vw; /* SPAZIO AUMENTATO: stacca molto di più il testo dalla foto */
+            /* Rimosso "gap" perché i vecchi lettori VNNOX lo ignorano, sostituito con margin sulla foto */
             align-items: center; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
@@ -82,11 +82,12 @@
         .fade-out { opacity: 0 !important; }
 
         #news-image-wrapper {
-            width: 38vw; /* Foto leggermente più larga in proporzione */
+            width: 38vw; 
             height: 60vh; 
             border-radius: 3vh;
             overflow: hidden;
             flex-shrink: 0;
+            margin-right: 5vw; /* SPAZIO FORZATO: questo crea il vero distacco dal testo a prova di errore */
             box-shadow: 0 1vh 3vh rgba(0,0,0,0.15);
             background-color: var(--widget-border);
         }
@@ -127,7 +128,6 @@
             color: var(--accent-orange);
             display: flex;
             align-items: center;
-            gap: 0.8vw;
             opacity: 0;
             transition: opacity 0.8s ease-in-out, color 1s ease;
         }
@@ -136,6 +136,7 @@
             content: "(•)";
             font-size: 2.5vh;
             color: var(--text-sec);
+            margin-right: 1vw; /* Distanza del puntino dalla scritta */
             transition: color 1s ease;
         }
 
