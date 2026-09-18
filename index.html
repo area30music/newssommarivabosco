@@ -42,7 +42,7 @@
             align-items: center;
         }
 
-        /* Il rettangolo della notizia */
+        /* Il rettangolo principale */
         #widget-container {
             position: relative;
             width: 96vw;  
@@ -50,7 +50,7 @@
             background-color: var(--widget-bg);
             border: 0.4vw solid var(--widget-border);
             border-radius: 4vh;
-            padding: 5vh 4vw;
+            padding: 4.5vh 4vw;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -58,8 +58,8 @@
         }
 
         #header {
-            margin-bottom: 3vh;
-            font-size: 6vh;
+            margin-bottom: 2.5vh;
+            font-size: 5.5vh;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: -0.1vw;
@@ -72,7 +72,6 @@
         #content-area {
             flex: 1;
             display: flex;
-            /* Rimosso "gap" perché i vecchi lettori VNNOX lo ignorano, sostituito con margin sulla foto */
             align-items: center; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
@@ -83,11 +82,11 @@
 
         #news-image-wrapper {
             width: 38vw; 
-            height: 60vh; 
+            height: 58vh; 
             border-radius: 3vh;
             overflow: hidden;
             flex-shrink: 0;
-            margin-right: 5vw; /* SPAZIO FORZATO: questo crea il vero distacco dal testo a prova di errore */
+            margin-right: 5vw; /* Spazio protetto dal testo */
             box-shadow: 0 1vh 3vh rgba(0,0,0,0.15);
             background-color: var(--widget-border);
         }
@@ -103,8 +102,24 @@
             display: flex;
             flex-direction: column;
             justify-content: center; 
-            height: 60vh; 
+            height: 58vh; 
             overflow: hidden;
+        }
+
+        /* Badge Categoria (Etichetta sopra il titolo) */
+        #news-category {
+            display: inline-block;
+            font-size: 2.2vh;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--accent-blue);
+            background-color: rgba(10, 132, 255, 0.12);
+            padding: 0.6vh 1.2vw;
+            border-radius: 1vh;
+            margin-bottom: 1.5vh;
+            width: fit-content;
+            letter-spacing: 0.05vw;
+            transition: color 1s ease, background-color 1s ease;
         }
 
         #news-title {
@@ -112,38 +127,71 @@
             color: var(--text-main);
             line-height: 1.15;
             display: -webkit-box;
-            -webkit-line-clamp: 6;
-            line-clamp: 6;
+            -webkit-line-clamp: 5;
+            line-clamp: 5;
             -webkit-box-orient: vertical;
             overflow: hidden;
             transition: color 1s ease, font-size 0.3s ease;
         }
 
-        #news-source {
+        /* Area informazioni in basso (Fonte + Data) */
+        #news-meta {
             position: absolute;
             bottom: 3.5vh;
-            left: 4.5vw; 
-            font-size: 3.5vh;
+            left: 4vw; 
+            display: flex;
+            align-items: center;
+            gap: 1.5vw;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        #news-source {
+            font-size: 3.2vh;
             font-weight: 700;
             color: var(--accent-orange);
             display: flex;
             align-items: center;
-            opacity: 0;
-            transition: opacity 0.8s ease-in-out, color 1s ease;
+            gap: 0.8vw;
+            transition: color 1s ease;
         }
 
         #news-source::before {
             content: "(•)";
-            font-size: 2.5vh;
+            font-size: 2.2vh;
             color: var(--text-sec);
-            margin-right: 1vw; /* Distanza del puntino dalla scritta */
+            transition: color 1s ease;
+        }
+
+        #news-date {
+            font-size: 2.8vh;
+            font-weight: 500;
+            color: var(--text-sec);
             transition: color 1s ease;
         }
 
         .show-content { opacity: 1 !important; }
 
-        #loading-message {
-            display: none; 
+        /* Barra di avanzamento temporale in basso al rettangolo */
+        #progress-bar-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0.8vh;
+            background-color: transparent;
+            border-bottom-left-radius: 4vh;
+            border-bottom-right-radius: 4vh;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 100%;
+            height: 100%;
+            background-color: var(--accent-blue);
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform linear;
         }
     </style>
 </head>
@@ -161,11 +209,19 @@
         </div>
         
         <div id="news-text-wrapper">
+            <div id="news-category">Territorio</div>
             <div id="news-title">Caricamento notizie in corso...</div>
         </div>
     </div>
 
-    <div id="news-source" class="show-content">Sommariva News</div>
+    <div id="news-meta" class="show-content">
+        <div id="news-source">Sommariva News</div>
+        <div id="news-date"></div>
+    </div>
+
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+    </div>
 
 </div>
 
@@ -189,22 +245,26 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA LOCALI (anti-blocco)
+    // NOTIZIE DI RISERVA LOCALI
     let newsItems = [
-        { source: "Sommariva News", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
-        { source: "Eventi Locali", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
-        { source: "Notizie del Territorio", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", pubDate: new Date() }
+        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
+        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
+        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", pubDate: new Date() }
     ];
 
     let currentIndex = 0;
-    const DISPLAY_DURATION = 15000; 
+    const DISPLAY_DURATION = 15000; // 15 secondi per notizia
 
     const contentArea = document.getElementById('content-area');
-    const elSource = document.getElementById('news-source');
+    const elMeta = document.getElementById('news-meta');
     const imageWrapper = document.getElementById('news-image-wrapper');
     const textWrapper = document.getElementById('news-text-wrapper');
     const elImage = document.getElementById('news-image');
+    const elCategory = document.getElementById('news-category');
     const elTitle = document.getElementById('news-title');
+    const elSource = document.getElementById('news-source');
+    const elDate = document.getElementById('news-date');
+    const progressBar = document.getElementById('progress-bar');
 
     const spamKeywords = [
         "dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", 
@@ -224,6 +284,28 @@
         clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
         clean = clean.replace(/\s*[-|]\s*[A-Z][a-zA-Z\s]+$/i, '');
         return clean.trim();
+    }
+
+    function getCategory(title) {
+        let t = title.toLowerCase();
+        if (/calcio|partita|mister|serie|volley|pallavolo|sport|squadra|gol|vittoria|sconfitta/i.test(t)) return "Sport";
+        if (/cibo|slow|vino|tartufo|mercato|sapori|ristorante|fiera|formaggio|degustazione/i.test(t)) return "Eventi & Food";
+        if (/comune|sindaco|regione|politica|consiglio|amministrazione|elezioni/i.test(t)) return "Territorio";
+        if (/premio|teatro|cinema|mostra|spettacolo|libri|concerto/i.test(t)) return "Cultura";
+        return "Cronaca";
+    }
+
+    function formatFriendlyDate(dateObj) {
+        if (!dateObj || isNaN(dateObj)) return "";
+        const now = new Date();
+        const diffHours = Math.floor((now - dateObj) / (1000 * 60 * 60));
+        
+        if (diffHours < 1) return "Pubblicato poco fa";
+        if (diffHours < 24 && now.getDate() === dateObj.getDate()) {
+            return `Oggi alle ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+        if (diffHours < 48) return "Ieri";
+        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
     }
 
     function isAdOrSpam(title, description) {
@@ -292,6 +374,7 @@
                         
                         tempNews.push({
                             source: feed.name,
+                            category: getCategory(cleanTitle),
                             title: cleanTitle,
                             image: extractImage(item, feed.name),
                             pubDate: new Date(item.pubDate)
@@ -303,8 +386,18 @@
 
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
+            // LIMITO RIGOROSAMENTE A UN MASSIMO DI 15 NOTIZIE
             newsItems = tempNews.slice(0, 15);
         }
+    }
+
+    function runProgressBar() {
+        progressBar.style.transition = 'none';
+        progressBar.style.transform = 'scaleX(0)';
+        setTimeout(() => {
+            progressBar.style.transition = `transform ${DISPLAY_DURATION}ms linear`;
+            progressBar.style.transform = 'scaleX(1)';
+        }, 50);
     }
 
     function showNews() {
@@ -313,14 +406,15 @@
         const currentNews = newsItems[currentIndex];
         
         contentArea.classList.add('fade-out');
-        elSource.classList.remove('show-content');
+        elMeta.classList.remove('show-content');
 
         setTimeout(() => {
             elImage.src = currentNews.image;
+            elCategory.textContent = currentNews.category;
             elSource.textContent = "Fonte: " + currentNews.source;
+            elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
 
-            // FONT IN PERCENTUALE ADATTIVA
             let len = currentNews.title.length;
             if (len < 35) {
                 elTitle.style.fontSize = "7.5vh"; 
@@ -335,7 +429,9 @@
             }
 
             contentArea.classList.remove('fade-out');
-            elSource.classList.add('show-content');
+            elMeta.classList.add('show-content');
+
+            runProgressBar();
 
             currentIndex++;
             if (currentIndex >= newsItems.length) currentIndex = 0;
