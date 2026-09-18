@@ -103,7 +103,7 @@
             justify-content: center; 
             height: 58vh; 
             overflow: hidden;
-            padding-right: 13vw; /* Spazio protetto per evitare che il testo finisca sopra il QR code */
+            padding-right: 15vw; /* Spazio protetto per il QR code ingrandito */
         }
 
         #news-category {
@@ -161,42 +161,41 @@
             transition: color 1s ease;
         }
 
-        /* Data staccata e di colore scuro/principale */
         #news-date {
             font-size: 2.8vh;
             font-weight: 600;
             color: var(--text-main);
-            margin-left: 2.5vw; /* Distanza marcata rispetto alla fonte */
+            margin-left: 2.5vw;
             transition: color 1s ease;
         }
 
-        /* Box QR Code in basso a destra */
+        /* Box QR Code INGRANDITO in basso a destra */
         #qr-container {
             position: absolute;
-            bottom: 2.5vh;
+            bottom: 2.2vh;
             right: 4vw;
             display: flex;
             flex-direction: column;
             align-items: center;
             background-color: #ffffff;
-            padding: 1vh 1vw;
-            border-radius: 1.5vh;
-            box-shadow: 0 0.5vh 1.5vh rgba(0,0,0,0.15);
+            padding: 1.2vh 1.2vw;
+            border-radius: 1.8vh;
+            box-shadow: 0 0.5vh 2vh rgba(0,0,0,0.2);
             opacity: 0;
             transition: opacity 0.8s ease-in-out;
         }
 
         #qr-code {
-            width: 10.5vh;
-            height: 10.5vh;
+            width: 14vh;  /* QR code ingrandito per una perfetta lettura sul LED wall */
+            height: 14vh;
             object-fit: contain;
         }
 
         #qr-label {
-            font-size: 1.5vh;
+            font-size: 1.7vh;
             font-weight: 700;
             color: #000000;
-            margin-top: 0.5vh;
+            margin-top: 0.6vh;
             text-transform: uppercase;
             letter-spacing: 0.05vw;
         }
@@ -280,11 +279,11 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA LOCALI
+    // NOTIZIE DI RISERVA LOCALI (con il link del comune aggiornato)
     let newsItems = [
-        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.sommarivadelbosco.cn.it", pubDate: new Date() },
-        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", link: "https://www.sommarivadelbosco.cn.it", pubDate: new Date() },
-        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", link: "https://www.sommarivadelbosco.cn.it", pubDate: new Date() }
+        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommalombardo.cn.it", pubDate: new Date() },
+        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommalombardo.cn.it", pubDate: new Date() },
+        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommalombardo.cn.it", pubDate: new Date() }
     ];
 
     let currentIndex = 0;
@@ -414,7 +413,7 @@
                             category: getCategory(cleanTitle),
                             title: cleanTitle,
                             image: extractImage(item, feed.name),
-                            link: item.link || "https://www.sommarivadelbosco.cn.it",
+                            link: item.link || "https://www.comune.sommarivadelbosco.cn.it",
                             pubDate: new Date(item.pubDate)
                         });
                     });
@@ -453,8 +452,7 @@
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code dinamico basato sul link dell'articolo
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentNews.link)}`;
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentNews.link)}`;
             elQrCode.src = qrApiUrl;
 
             let len = currentNews.title.length;
