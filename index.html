@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News - Sommariva del Bosco</title>
     <style>
-        /* Variabili di colore: Modalità Scura (Stile iOS Dark) */
+        /* Variabili di colore: Modalità Scura */
         :root {
             --page-bg: #000000;
             --widget-bg: #1c1c1e;
@@ -16,18 +16,18 @@
             --accent-orange: #ff9f0a;
         }
 
-        /* Variabili di colore: Modalità Chiara (Stile iOS Light) */
+        /* Variabili di colore: Modalità Chiara */
         body.light-mode {
-            --page-bg: #f2f2f7;
+            --page-bg: #e5e5ea; /* Sfondo pagina più grigio per far risaltare il rettangolo bianco */
             --widget-bg: #ffffff;
-            --widget-border: #e5e5ea;
+            --widget-border: #d1d1d6;
             --text-main: #000000;
             --text-sec: #8e8e93;
             --accent-blue: #007aff;
             --accent-orange: #ff9500;
         }
 
-        /* Layout fluido 100% percentuale (Anti-Crash VNNOX) */
+        /* Layout fluido compatibile con VNNOX */
         body, html {
             margin: 0;
             padding: 0;
@@ -37,23 +37,29 @@
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             transition: background-color 1s ease;
+            display: flex;
+            justify-content: center; /* Centra il rettangolo orizzontalmente */
+            align-items: center; /* Centra il rettangolo verticalmente */
         }
 
+        /* Il rettangolo della notizia */
         #widget-container {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 92vw;  /* Lascia spazio ai lati per mostrare lo sfondo */
+            height: 88vh; /* Lascia spazio sopra e sotto */
             background-color: var(--widget-bg);
-            border: 0.3vw solid var(--widget-border);
-            padding: 4vh 4vw;
+            border: 0.4vw solid var(--widget-border);
+            border-radius: 4vh;
+            padding: 5vh 5vw;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 2vh 5vh rgba(0, 0, 0, 0.3); /* Ombra per staccarlo dallo sfondo */
         }
 
         #header {
             margin-bottom: 3vh;
-            font-size: 6.5vh;
+            font-size: 6vh;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: -0.1vw;
@@ -66,23 +72,22 @@
         #content-area {
             flex: 1;
             display: flex;
-            gap: 4vw; 
+            gap: 6vw; /* GAP AUMENTATO: stacca visibilmente il titolo dalla foto */
             align-items: center; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
-            padding-left: 1vw;
             overflow: hidden; 
         }
 
         .fade-out { opacity: 0 !important; }
 
         #news-image-wrapper {
-            width: 38vw;
-            height: 65vh; 
+            width: 36vw;
+            height: 56vh; 
             border-radius: 3vh;
             overflow: hidden;
             flex-shrink: 0;
-            box-shadow: 0 2vh 4vh rgba(0,0,0,0.15);
+            box-shadow: 0 1vh 3vh rgba(0,0,0,0.15);
             background-color: var(--widget-border);
         }
 
@@ -97,8 +102,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center; 
-            padding-right: 2vw;
-            height: 65vh; 
+            height: 56vh; 
             overflow: hidden;
         }
 
@@ -184,7 +188,7 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA LOCALI 
+    // NOTIZIE DI RISERVA LOCALI (anti-blocco)
     let newsItems = [
         { source: "Sommariva News", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
         { source: "Eventi Locali", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
@@ -315,18 +319,18 @@
             elSource.textContent = "Fonte: " + currentNews.source;
             elTitle.textContent = currentNews.title;
 
-            // FONT IN PERCENTUALE: si ridimensiona automaticamente in base a VNNOX
+            // FONT IN PERCENTUALE ADATTIVA
             let len = currentNews.title.length;
             if (len < 35) {
-                elTitle.style.fontSize = "8vh"; 
+                elTitle.style.fontSize = "7.5vh"; 
             } else if (len < 65) {
-                elTitle.style.fontSize = "7vh"; 
+                elTitle.style.fontSize = "6.5vh"; 
             } else if (len < 100) {
-                elTitle.style.fontSize = "6vh"; 
+                elTitle.style.fontSize = "5.5vh"; 
             } else if (len < 145) {
-                elTitle.style.fontSize = "5vh"; 
+                elTitle.style.fontSize = "4.5vh"; 
             } else {
-                elTitle.style.fontSize = "4.2vh"; 
+                elTitle.style.fontSize = "3.8vh"; 
             }
 
             contentArea.classList.remove('fade-out');
