@@ -42,7 +42,6 @@
             align-items: center;
         }
 
-        /* Il rettangolo principale */
         #widget-container {
             position: relative;
             width: 96vw;  
@@ -81,12 +80,12 @@
         .fade-out { opacity: 0 !important; }
 
         #news-image-wrapper {
-            width: 38vw; 
+            width: 36vw; 
             height: 58vh; 
             border-radius: 3vh;
             overflow: hidden;
             flex-shrink: 0;
-            margin-right: 5vw; /* Spazio protetto dal testo */
+            margin-right: 4vw;
             box-shadow: 0 1vh 3vh rgba(0,0,0,0.15);
             background-color: var(--widget-border);
         }
@@ -104,9 +103,9 @@
             justify-content: center; 
             height: 58vh; 
             overflow: hidden;
+            padding-right: 13vw; /* Spazio protetto per evitare che il testo finisca sopra il QR code */
         }
 
-        /* Badge Categoria (Etichetta sopra il titolo) */
         #news-category {
             display: inline-block;
             font-size: 2.2vh;
@@ -134,20 +133,19 @@
             transition: color 1s ease, font-size 0.3s ease;
         }
 
-        /* Area informazioni in basso (Fonte + Data) */
+        /* Area informazioni in basso (Fonte + Data staccata) */
         #news-meta {
             position: absolute;
             bottom: 3.5vh;
             left: 4vw; 
             display: flex;
             align-items: center;
-            gap: 1.5vw;
             opacity: 0;
             transition: opacity 0.8s ease-in-out;
         }
 
         #news-source {
-            font-size: 3.2vh;
+            font-size: 3vh;
             font-weight: 700;
             color: var(--accent-orange);
             display: flex;
@@ -158,21 +156,53 @@
 
         #news-source::before {
             content: "(•)";
-            font-size: 2.2vh;
+            font-size: 2vh;
             color: var(--text-sec);
             transition: color 1s ease;
         }
 
+        /* Data staccata e di colore scuro/principale */
         #news-date {
             font-size: 2.8vh;
-            font-weight: 500;
-            color: var(--text-sec);
+            font-weight: 600;
+            color: var(--text-main);
+            margin-left: 2.5vw; /* Distanza marcata rispetto alla fonte */
             transition: color 1s ease;
+        }
+
+        /* Box QR Code in basso a destra */
+        #qr-container {
+            position: absolute;
+            bottom: 2.5vh;
+            right: 4vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            padding: 1vh 1vw;
+            border-radius: 1.5vh;
+            box-shadow: 0 0.5vh 1.5vh rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        #qr-code {
+            width: 10.5vh;
+            height: 10.5vh;
+            object-fit: contain;
+        }
+
+        #qr-label {
+            font-size: 1.5vh;
+            font-weight: 700;
+            color: #000000;
+            margin-top: 0.5vh;
+            text-transform: uppercase;
+            letter-spacing: 0.05vw;
         }
 
         .show-content { opacity: 1 !important; }
 
-        /* Barra di avanzamento temporale in basso al rettangolo */
         #progress-bar-container {
             position: absolute;
             bottom: 0;
@@ -219,6 +249,11 @@
         <div id="news-date"></div>
     </div>
 
+    <div id="qr-container" class="show-content">
+        <img id="qr-code" src="" alt="QR">
+        <div id="qr-label">Leggi</div>
+    </div>
+
     <div id="progress-bar-container">
         <div id="progress-bar"></div>
     </div>
@@ -247,16 +282,17 @@
 
     // NOTIZIE DI RISERVA LOCALI
     let newsItems = [
-        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
-        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", pubDate: new Date() },
-        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", pubDate: new Date() }
+        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.sommarivadelbosco.cn.it", pubDate: new Date() },
+        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", link: "https://www.sommarivadelbosco.cn.it", pubDate: new Date() },
+        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", link: "https://www.sommarivadelbosco.cn.it", pubDate: new Date() }
     ];
 
     let currentIndex = 0;
-    const DISPLAY_DURATION = 15000; // 15 secondi per notizia
+    const DISPLAY_DURATION = 15000; 
 
     const contentArea = document.getElementById('content-area');
     const elMeta = document.getElementById('news-meta');
+    const qrContainer = document.getElementById('qr-container');
     const imageWrapper = document.getElementById('news-image-wrapper');
     const textWrapper = document.getElementById('news-text-wrapper');
     const elImage = document.getElementById('news-image');
@@ -264,6 +300,7 @@
     const elTitle = document.getElementById('news-title');
     const elSource = document.getElementById('news-source');
     const elDate = document.getElementById('news-date');
+    const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
 
     const spamKeywords = [
@@ -377,6 +414,7 @@
                             category: getCategory(cleanTitle),
                             title: cleanTitle,
                             image: extractImage(item, feed.name),
+                            link: item.link || "https://www.sommarivadelbosco.cn.it",
                             pubDate: new Date(item.pubDate)
                         });
                     });
@@ -386,7 +424,6 @@
 
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
-            // LIMITO RIGOROSAMENTE A UN MASSIMO DI 15 NOTIZIE
             newsItems = tempNews.slice(0, 15);
         }
     }
@@ -407,6 +444,7 @@
         
         contentArea.classList.add('fade-out');
         elMeta.classList.remove('show-content');
+        qrContainer.classList.remove('show-content');
 
         setTimeout(() => {
             elImage.src = currentNews.image;
@@ -414,6 +452,10 @@
             elSource.textContent = "Fonte: " + currentNews.source;
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
+            
+            // Genera il QR code dinamico basato sul link dell'articolo
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentNews.link)}`;
+            elQrCode.src = qrApiUrl;
 
             let len = currentNews.title.length;
             if (len < 35) {
@@ -430,6 +472,7 @@
 
             contentArea.classList.remove('fade-out');
             elMeta.classList.add('show-content');
+            qrContainer.classList.add('show-content');
 
             runProgressBar();
 
