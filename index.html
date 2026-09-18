@@ -18,7 +18,7 @@
 
         /* Variabili di colore: Modalità Chiara */
         body.light-mode {
-            --page-bg: #e5e5ea; /* Sfondo pagina più grigio per far risaltare il rettangolo bianco */
+            --page-bg: #e5e5ea; /* Sfondo pagina per cornice */
             --widget-bg: #ffffff;
             --widget-border: #d1d1d6;
             --text-main: #000000;
@@ -38,23 +38,23 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             transition: background-color 1s ease;
             display: flex;
-            justify-content: center; /* Centra il rettangolo orizzontalmente */
-            align-items: center; /* Centra il rettangolo verticalmente */
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Il rettangolo della notizia */
+        /* Il rettangolo della notizia - INGRANDITO */
         #widget-container {
             position: relative;
-            width: 92vw;  /* Lascia spazio ai lati per mostrare lo sfondo */
-            height: 88vh; /* Lascia spazio sopra e sotto */
+            width: 96vw;  /* Aumentato per ridurre lo spazio grigio ai lati */
+            height: 94vh; /* Aumentato per ridurre lo spazio grigio sopra/sotto */
             background-color: var(--widget-bg);
             border: 0.4vw solid var(--widget-border);
             border-radius: 4vh;
-            padding: 5vh 5vw;
+            padding: 5vh 4vw;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 2vh 5vh rgba(0, 0, 0, 0.3); /* Ombra per staccarlo dallo sfondo */
+            box-shadow: 0 2vh 5vh rgba(0, 0, 0, 0.3);
         }
 
         #header {
@@ -72,7 +72,7 @@
         #content-area {
             flex: 1;
             display: flex;
-            gap: 6vw; /* GAP AUMENTATO: stacca visibilmente il titolo dalla foto */
+            gap: 8vw; /* SPAZIO AUMENTATO: stacca molto di più il testo dalla foto */
             align-items: center; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
@@ -82,8 +82,8 @@
         .fade-out { opacity: 0 !important; }
 
         #news-image-wrapper {
-            width: 36vw;
-            height: 56vh; 
+            width: 38vw; /* Foto leggermente più larga in proporzione */
+            height: 60vh; 
             border-radius: 3vh;
             overflow: hidden;
             flex-shrink: 0;
@@ -102,7 +102,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center; 
-            height: 56vh; 
+            height: 60vh; 
             overflow: hidden;
         }
 
@@ -120,8 +120,8 @@
 
         #news-source {
             position: absolute;
-            bottom: 4vh;
-            left: 5vw; 
+            bottom: 3.5vh;
+            left: 4.5vw; 
             font-size: 3.5vh;
             font-weight: 700;
             color: var(--accent-orange);
