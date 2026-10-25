@@ -347,31 +347,27 @@
         return false;
     }
 
-    function extractImageFromXML(itemNode, sourceName, rawText) {
+    function extractImage(item, sourceName) {
         if (sourceName === "Gazzetta d'Alba") return NEWS_DEFAULT_IMAGE;
-        
-        const enclosure = itemNode.querySelector("enclosure");
-        if (enclosure && enclosure.getAttribute("type") && enclosure.getAttribute("type").startsWith("image/")) {
-            return enclosure.getAttribute("url");
+        let imgUrl = "";
+        if (item.thumbnail && item.thumbnail.trim() !== "") {
+            imgUrl = item.thumbnail;
+        } else if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
+            imgUrl = item.enclosure.link;
+        } else {
+            const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
+            let match = imgRegex.exec(item.content || item.description);
+            if (match && match[1]) imgUrl = match[1];
         }
-        
-        const mediaElements = itemNode.getElementsByTagNameNS("*", "content");
-        for (let m of mediaElements) {
-            if (m.getAttribute("medium") === "image" || (m.getAttribute("type") && m.getAttribute("type").startsWith("image/"))) {
-                return m.getAttribute("url");
-            }
+        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning|default/i.test(imgUrl)) {
+            return NEWS_DEFAULT_IMAGE;
         }
-        
-        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-        let match = imgRegex.exec(rawText);
-        if (match && match[1]) return match[1];
-        
-        return NEWS_DEFAULT_IMAGE;
+        return imgUrl;
     }
 
     async function fetchAllNews() {
-        const CACHE_KEY = 'sommariva_news_cache_v4'; // Chiave aggiornata per forzare la pulizia della memoria
-        const CACHE_TIME_KEY = 'sommariva_news_time_v4';
+        const CACHE_KEY = 'sommariva_news_cache_v5'; 
+        const CACHE_TIME_KEY = 'sommariva_news_time_v5';
         const CACHE_DURATION = 3600000; 
 
         const lastFetch = localStorage.getItem(CACHE_TIME_KEY);
@@ -393,45 +389,32 @@
 
         for (const feed of rssFeeds) {
             try {
-                const apiUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`;
-                const response = await fetch(apiUrl);
+                // Torniamo all'API originale rss2json che aggira i blocchi dei siti, aggiungendo l'orario per ignorare la cache esterna
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${now}`;
+                
+                const fetchPromise = fetch(apiUrl);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
+                
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
                 const data = await response.json();
 
-                if (data && data.contents) {
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(data.contents, "text/xml");
-                    const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
-
+                if (data && data.status === 'ok') {
+                    const items = data.items.slice(0, feed.limit); 
                     items.forEach(item => {
-                        const titleNode = item.querySelector("title");
-                        const linkNode = item.querySelector("link");
-                        const dateNode = item.querySelector("pubDate");
-                        const descNode = item.querySelector("description");
-                        const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
-
-                        if (!titleNode) return;
-
-                        let title = titleNode.textContent;
-                        let link = linkNode ? linkNode.textContent : "https://www.comune.sommarivadelbosco.cn.it/";
-                        let description = descNode ? descNode.textContent : "";
-                        let encodedContent = encodedNode ? encodedNode.textContent : "";
-                        
-                        let rawText = encodedContent || description;
+                        let rawText = item.content ? item.content : item.description;
                         let cleanText = cleanHTML(rawText);
-                        let cleanTitle = formatTitle(title);
+                        let cleanTitle = formatTitle(item.title);
                         
                         if (isAdOrSpam(cleanTitle, cleanText)) return;
                         if (isDuplicate(cleanTitle, tempNews)) return;
                         
-                        let imgUrl = extractImageFromXML(item, feed.name, rawText);
-
                         tempNews.push({
                             source: feed.name,
                             category: getCategory(cleanTitle),
                             title: cleanTitle,
-                            image: imgUrl,
-                            link: link,
-                            pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
+                            image: extractImage(item, feed.name),
+                            link: item.link || "https://www.comune.sommarivadelbosco.cn.it/",
+                            pubDate: new Date(item.pubDate)
                         });
                     });
                 }
