@@ -279,11 +279,11 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA LOCALI (con il link del comune aggiornato)
+    // NOTIZIE DI RISERVA LOCALI (con il link corretto di Sommariva del Bosco)
     let newsItems = [
-        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommalombardo.cn.it", pubDate: new Date() },
-        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommalombardo.cn.it", pubDate: new Date() },
-        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommalombardo.cn.it", pubDate: new Date() }
+        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() },
+        { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() },
+        { source: "Notizie del Territorio", category: "Cronaca", title: "Cronaca, sport e informazioni utili per la comunità locale", image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() }
     ];
 
     let currentIndex = 0;
@@ -390,9 +390,9 @@
         for (const feed of rssFeeds) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${new Date().getTime()}`;
                 const response = await fetch(apiUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
 
@@ -413,12 +413,14 @@
                             category: getCategory(cleanTitle),
                             title: cleanTitle,
                             image: extractImage(item, feed.name),
-                            link: item.link || "https://www.comune.sommarivadelbosco.cn.it",
+                            link: item.link || "https://www.comune.sommarivadelbosco.cn.it/",
                             pubDate: new Date(item.pubDate)
                         });
                     });
                 }
-            } catch (error) {}
+            } catch (error) {
+                console.log("Errore nel caricamento del feed:", feed.name);
+            }
         }
 
         if (tempNews.length > 0) {
