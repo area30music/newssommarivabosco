@@ -272,7 +272,6 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // UNA SOLA NOTIZIA DI RISERVA
     let newsItems = [
         { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() }
     ];
@@ -371,8 +370,8 @@
     }
 
     async function fetchAllNews() {
-        const CACHE_KEY = 'sommariva_news_cache_v3';
-        const CACHE_TIME_KEY = 'sommariva_news_time_v3';
+        const CACHE_KEY = 'sommariva_news_cache_v4'; // Chiave aggiornata per forzare la pulizia della memoria
+        const CACHE_TIME_KEY = 'sommariva_news_time_v4';
         const CACHE_DURATION = 3600000; 
 
         const lastFetch = localStorage.getItem(CACHE_TIME_KEY);
@@ -394,7 +393,6 @@
 
         for (const feed of rssFeeds) {
             try {
-                // Utilizzo di un proxy pubblico per evitare i blocchi IP e aggirare i limiti CORS
                 const apiUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`;
                 const response = await fetch(apiUrl);
                 const data = await response.json();
