@@ -103,7 +103,7 @@
             justify-content: center; 
             height: 58vh; 
             overflow: hidden;
-            padding-right: 15vw; /* Spazio protetto per il QR code ingrandito */
+            padding-right: 15vw; 
         }
 
         #news-category {
@@ -133,7 +133,6 @@
             transition: color 1s ease, font-size 0.3s ease;
         }
 
-        /* Area informazioni in basso (Fonte + Data staccata) */
         #news-meta {
             position: absolute;
             bottom: 3.5vh;
@@ -169,7 +168,6 @@
             transition: color 1s ease;
         }
 
-        /* Box QR Code INGRANDITO in basso a destra */
         #qr-container {
             position: absolute;
             bottom: 2.2vh;
@@ -186,7 +184,7 @@
         }
 
         #qr-code {
-            width: 14vh;  /* QR code ingrandito per una perfetta lettura sul LED wall */
+            width: 14vh;  
             height: 14vh;
             object-fit: contain;
         }
@@ -279,7 +277,6 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // NOTIZIE DI RISERVA LOCALI (con il link corretto di Sommariva del Bosco)
     let newsItems = [
         { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() },
         { source: "Eventi Locali", category: "Cultura", title: "Tutti gli appuntamenti, le fiere e le manifestazioni culturali in programma", image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() },
@@ -292,8 +289,6 @@
     const contentArea = document.getElementById('content-area');
     const elMeta = document.getElementById('news-meta');
     const qrContainer = document.getElementById('qr-container');
-    const imageWrapper = document.getElementById('news-image-wrapper');
-    const textWrapper = document.getElementById('news-text-wrapper');
     const elImage = document.getElementById('news-image');
     const elCategory = document.getElementById('news-category');
     const elTitle = document.getElementById('news-title');
@@ -302,11 +297,7 @@
     const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
 
-    const spamKeywords = [
-        "dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", 
-        "visita specialistica", "pubblicità", "promozione", "sponsorizzato", 
-        "offerta", "sconto", "commerciale", "marketing", "dentista", "clinica"
-    ];
+    const spamKeywords = ["dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", "visita specialistica", "pubblicità", "promozione", "sponsorizzato", "offerta", "sconto", "commerciale", "marketing", "dentista", "clinica"];
 
     function cleanHTML(html) {
         if (!html) return "";
@@ -365,9 +356,7 @@
     const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
 
     function extractImage(item, sourceName) {
-        if (sourceName === "Gazzetta d'Alba") {
-            return NEWS_DEFAULT_IMAGE;
-        }
+        if (sourceName === "Gazzetta d'Alba") return NEWS_DEFAULT_IMAGE;
         let imgUrl = "";
         if (item.thumbnail && item.thumbnail.trim() !== "") {
             imgUrl = item.thumbnail;
@@ -385,20 +374,38 @@
     }
 
     async function fetchAllNews() {
+        const CACHE_KEY = 'sommariva_news_cache_v2';
+        const CACHE_TIME_KEY = 'sommariva_news_time_v2';
+        const CACHE_DURATION = 3600000; 
+
+        const lastFetch = localStorage.getItem(CACHE_TIME_KEY);
+        const cachedNews = localStorage.getItem(CACHE_KEY);
+        const now = new Date().getTime();
+
+        if (cachedNews && lastFetch && (now - parseInt(lastFetch)) < CACHE_DURATION) {
+            try {
+                let parsed = JSON.parse(cachedNews);
+                parsed.forEach(n => n.pubDate = new Date(n.pubDate));
+                if (parsed.length > 0) {
+                    newsItems = parsed;
+                    return; 
+                }
+            } catch (e) { }
+        }
+
         let tempNews = [];
 
         for (const feed of rssFeeds) {
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${new Date().getTime()}`;
-                const response = await fetch(apiUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
+                
+                const fetchPromise = fetch(apiUrl);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
+                
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
                 const data = await response.json();
 
-                if (data.status === 'ok') {
+                if (data && data.status === 'ok') {
                     const items = data.items.slice(0, feed.limit); 
                     items.forEach(item => {
                         let rawText = item.content ? item.content : item.description;
@@ -418,14 +425,17 @@
                         });
                     });
                 }
-            } catch (error) {
-                console.log("Errore nel caricamento del feed:", feed.name);
-            }
+            } catch (error) { }
         }
 
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
+            
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify(newsItems));
+                localStorage.setItem(CACHE_TIME_KEY, now.toString());
+            } catch (e) { }
         }
     }
 
@@ -458,17 +468,11 @@
             elQrCode.src = qrApiUrl;
 
             let len = currentNews.title.length;
-            if (len < 35) {
-                elTitle.style.fontSize = "7.5vh"; 
-            } else if (len < 65) {
-                elTitle.style.fontSize = "6.5vh"; 
-            } else if (len < 100) {
-                elTitle.style.fontSize = "5.5vh"; 
-            } else if (len < 145) {
-                elTitle.style.fontSize = "4.5vh"; 
-            } else {
-                elTitle.style.fontSize = "3.8vh"; 
-            }
+            if (len < 35) elTitle.style.fontSize = "7.5vh"; 
+            else if (len < 65) elTitle.style.fontSize = "6.5vh"; 
+            else if (len < 100) elTitle.style.fontSize = "5.5vh"; 
+            else if (len < 145) elTitle.style.fontSize = "4.5vh"; 
+            else elTitle.style.fontSize = "3.8vh"; 
 
             contentArea.classList.remove('fade-out');
             elMeta.classList.add('show-content');
