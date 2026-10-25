@@ -228,12 +228,12 @@
     
     <div id="content-area">
         <div id="news-image-wrapper">
-            <img id="news-image" src="" alt="" onerror="this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80'">
+            <img id="news-image" src="https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80" alt="News">
         </div>
         
         <div id="news-text-wrapper">
-            <div id="news-category">Sistema</div>
-            <div id="news-title">Connessione ai server in corso...</div>
+            <div id="news-category">SISTEMA</div>
+            <div id="news-title" id="debug-title">Avvio e sincronizzazione in corso...</div>
         </div>
     </div>
 
@@ -243,7 +243,8 @@
     </div>
 
     <div id="qr-container" class="show-content">
-        <img id="qr-code" src="" alt="QR">
+        <!-- Pixel trasparente per evitare l'errore visivo di immagine rotta -->
+        <img id="qr-code" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="QR">
         <div id="qr-label">Leggi</div>
     </div>
 
@@ -253,17 +254,20 @@
 </div>
 
 <script>
+    // Cattura errori globali Javascript per impedire il blocco totale
+    window.onerror = function(msg, url, lineNo) {
+        console.error("Errore JS: " + msg + " alla riga " + lineNo);
+        forceStartFallback();
+        return false;
+    };
+
     localStorage.clear();
 
     function updateTheme() {
         const hour = new Date().getHours();
-        if (hour >= 7 && hour < 19) {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.remove('light-mode');
-        }
+        if (hour >= 7 && hour < 19) document.body.classList.add('light-mode');
+        else document.body.classList.remove('light-mode');
     }
-    
     updateTheme();
     setInterval(updateTheme, 60000);
 
@@ -274,9 +278,14 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
+    // Notizia di emergenza inserita di default.
+    const fallbackNews = [
+        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() }
+    ];
     let newsItems = [];
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
+    let loopInterval = null;
 
     const contentArea = document.getElementById('content-area');
     const elMeta = document.getElementById('news-meta');
@@ -288,7 +297,6 @@
     const elDate = document.getElementById('news-date');
     const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
-    const imageWrapper = document.getElementById('news-image-wrapper');
 
     const spamKeywords = ["dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", "visita specialistica", "pubblicità", "promozione", "sponsorizzato", "offerta", "sconto", "commerciale", "marketing", "dentista", "clinica"];
     const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
@@ -303,7 +311,6 @@
     function formatTitle(title) {
         let clean = cleanHTML(title);
         clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
-        clean = clean.replace(/\s*[-|]\s*[A-Z][a-zA-Z\s]+$/i, '');
         return clean.trim();
     }
 
@@ -320,7 +327,6 @@
         if (!dateObj || isNaN(dateObj)) return "";
         const now = new Date();
         const diffHours = Math.floor((now - dateObj) / (1000 * 60 * 60));
-        
         if (diffHours < 1) return "Pubblicato poco fa";
         if (diffHours < 24 && now.getDate() === dateObj.getDate()) {
             return `Oggi alle ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
@@ -347,17 +353,6 @@
         return false;
     }
 
-    function extractImageFromXML(itemNode, rawText) {
-        const enclosure = itemNode.querySelector("enclosure");
-        if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
-        const media = itemNode.getElementsByTagNameNS("*", "content");
-        if (media.length > 0 && media[0].getAttribute("url")) return media[0].getAttribute("url");
-        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-        let match = imgRegex.exec(rawText);
-        if (match && match[1]) return match[1];
-        return NEWS_DEFAULT_IMAGE;
-    }
-
     function extractImageJSON(item, sourceName) {
         if (sourceName === "Gazzetta d'Alba") return NEWS_DEFAULT_IMAGE;
         if (item.thumbnail) return item.thumbnail;
@@ -368,18 +363,24 @@
         return NEWS_DEFAULT_IMAGE;
     }
 
+    // Funzione di fetch con Timeout vitale per impedire il congelamento
+    async function fetchWithTimeout(resource, options = {}) {
+        const { timeout = 5000 } = options;
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        const response = await fetch(resource, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    }
+
     async function fetchAllNews() {
         let tempNews = [];
-        let networkErrors = [];
         const timeBuster = Date.now();
 
-        for (const feed of rssFeeds) {
-            let success = false;
-            
-            // Tentativo 1: JSON Proxy
-            if (!success) {
+        try {
+            for (const feed of rssFeeds) {
                 try {
-                    const r1 = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${timeBuster}`);
+                    const r1 = await fetchWithTimeout(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${timeBuster}`, { timeout: 6000 });
                     const d1 = await r1.json();
                     if (d1 && d1.status === 'ok') {
                         d1.items.slice(0, feed.limit).forEach(item => {
@@ -397,69 +398,36 @@
                                 pubDate: new Date(item.pubDate.replace(' ', 'T'))
                             });
                         });
-                        success = true;
-                    } else throw new Error(d1.message || "Risposta API vuota");
+                    }
                 } catch(e) {
-                    networkErrors.push(`T1 (${feed.name}): ${e.message}`);
+                    console.log(`Fetch fallito per ${feed.name}: ${e.message}`);
                 }
             }
 
-            // Tentativo 2: RAW XML Proxy (se T1 fallisce)
-            if (!success) {
-                try {
-                    const r2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(feed.url)}&_=${timeBuster}`);
-                    if (!r2.ok) throw new Error("HTTP " + r2.status);
-                    const t2 = await r2.text();
-                    
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(t2, "application/xml");
-                    const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
-
-                    if (items.length > 0) {
-                        items.forEach(item => {
-                            const titleNode = item.querySelector("title");
-                            const linkNode = item.querySelector("link");
-                            const dateNode = item.querySelector("pubDate");
-                            const descNode = item.querySelector("description");
-                            const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
-
-                            if (!titleNode) return;
-                            let rawText = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
-                            let cleanTitle = formatTitle(titleNode.textContent);
-                            
-                            if (isAdOrSpam(cleanTitle, cleanHTML(rawText)) || isDuplicate(cleanTitle, tempNews)) return;
-                            tempNews.push({
-                                source: feed.name,
-                                category: getCategory(cleanTitle),
-                                title: cleanTitle,
-                                image: (feed.name === "Gazzetta d'Alba") ? NEWS_DEFAULT_IMAGE : extractImageFromXML(item, rawText),
-                                link: linkNode ? linkNode.textContent : "https://www.comune.sommarivadelbosco.cn.it/",
-                                pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
-                            });
-                        });
-                        success = true;
-                    } else throw new Error("File XML vuoto o bloccato");
-                } catch(e) {
-                    networkErrors.push(`T2 (${feed.name}): ${e.message}`);
-                }
+            if (tempNews.length > 0) {
+                tempNews.sort((a, b) => b.pubDate - a.pubDate);
+                newsItems = tempNews.slice(0, 15);
+            } else {
+                newsItems = [...fallbackNews];
             }
+        } catch (fatalError) {
+            newsItems = [...fallbackNews];
         }
 
-        if (tempNews.length > 0) {
-            tempNews.sort((a, b) => b.pubDate - a.pubDate);
-            newsItems = tempNews.slice(0, 15);
-            if (currentIndex === 0) showNews();
-        } else {
-            // MOSTRA ERRORI ESATTI A SCHERMO PER DIAGNOSI
-            imageWrapper.style.display = 'none';
-            elCategory.textContent = "ERRORE DI RETE GITHUB";
-            elCategory.style.backgroundColor = "rgba(255, 59, 48, 0.12)";
-            elCategory.style.color = "#ff3b30";
-            elTitle.style.fontSize = "3.2vh";
-            elTitle.style.webkitLineClamp = "unset";
-            elTitle.innerHTML = "I sistemi di sicurezza esterni stanno bloccando il traffico.<br><br><span style='color:#ff3b30; font-family:monospace; font-size:2.5vh;'>" + networkErrors.slice(0, 4).join("<br>") + "</span>";
-            elMeta.classList.remove('show-content');
-            qrContainer.classList.remove('show-content');
+        // Se è il primo avvio, lancia il carosello
+        if (loopInterval === null) {
+            currentIndex = 0;
+            showNews();
+            loopInterval = setInterval(showNews, DISPLAY_DURATION);
+        }
+    }
+
+    function forceStartFallback() {
+        if (loopInterval === null) {
+            newsItems = [...fallbackNews];
+            currentIndex = 0;
+            showNews();
+            loopInterval = setInterval(showNews, DISPLAY_DURATION);
         }
     }
 
@@ -473,7 +441,10 @@
     }
 
     function showNews() {
-        if (newsItems.length === 0) return;
+        if (newsItems.length === 0) {
+            forceStartFallback();
+            return;
+        }
         if (currentIndex >= newsItems.length) currentIndex = 0;
 
         const currentNews = newsItems[currentIndex];
@@ -483,11 +454,8 @@
         qrContainer.classList.remove('show-content');
 
         setTimeout(() => {
-            imageWrapper.style.display = 'block';
             elImage.src = currentNews.image;
             elCategory.textContent = currentNews.category;
-            elCategory.style.backgroundColor = "rgba(10, 132, 255, 0.12)";
-            elCategory.style.color = "var(--accent-blue)";
             elSource.textContent = "Fonte: " + currentNews.source;
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
@@ -512,10 +480,9 @@
         }, 800); 
     }
 
+    // Inizia la procedura
     fetchAllNews();
-    setInterval(showNews, DISPLAY_DURATION);
     setInterval(fetchAllNews, 3600000); 
-
 </script>
 
 </body>
