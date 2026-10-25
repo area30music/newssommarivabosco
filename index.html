@@ -233,7 +233,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie in corso...</div>
+            <div id="news-title">Ricerca notizie dal territorio in corso...</div>
         </div>
     </div>
 
@@ -253,6 +253,9 @@
 </div>
 
 <script>
+    // Pulizia totale forzata della memoria del browser per eliminare blocchi pregressi
+    localStorage.clear();
+
     function updateTheme() {
         const hour = new Date().getHours();
         if (hour >= 7 && hour < 19) {
@@ -347,158 +350,67 @@
         return false;
     }
 
-    function extractImageFromXML(itemNode, sourceName, rawText) {
-        if (sourceName === "Gazzetta d'Alba") return NEWS_DEFAULT_IMAGE;
-        try {
-            const enclosure = itemNode.querySelector("enclosure");
-            if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
-            
-            const media = itemNode.getElementsByTagNameNS("*", "content");
-            if (media.length > 0 && media[0].getAttribute("url")) return media[0].getAttribute("url");
-            
-            const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-            let match = imgRegex.exec(rawText);
-            if (match && match[1]) return match[1];
-        } catch(e) {}
-        return NEWS_DEFAULT_IMAGE;
-    }
-
-    function extractImage(item, sourceName) {
-        if (sourceName === "Gazzetta d'Alba") return NEWS_DEFAULT_IMAGE;
-        let imgUrl = "";
-        if (item.thumbnail && item.thumbnail.trim() !== "") {
-            imgUrl = item.thumbnail;
-        } else if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
-            imgUrl = item.enclosure.link;
-        } else {
-            const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-            let match = imgRegex.exec(item.content || item.description);
-            if (match && match[1]) imgUrl = match[1];
-        }
-        if (!imgUrl || imgUrl.length < 10 || /feedburner|1x1|pixel|tracker|blank|hotlinked|stop|error|warning|default/i.test(imgUrl)) {
-            return NEWS_DEFAULT_IMAGE;
-        }
-        return imgUrl;
+    function extractImageFromHTML(htmlContent) {
+        if (!htmlContent) return null;
+        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/i;
+        let match = imgRegex.exec(htmlContent);
+        if (match && match[1]) return match[1];
+        return null;
     }
 
     async function fetchAllNews() {
-        const CACHE_KEY = 'sommariva_news_cache_v6'; 
-        const CACHE_TIME_KEY = 'sommariva_news_time_v6';
-        const CACHE_DURATION = 3600000; 
-
-        const lastFetch = localStorage.getItem(CACHE_TIME_KEY);
-        const cachedNews = localStorage.getItem(CACHE_KEY);
-        const now = new Date().getTime();
-
-        if (cachedNews && lastFetch && (now - parseInt(lastFetch)) < CACHE_DURATION) {
-            try {
-                let parsed = JSON.parse(cachedNews);
-                parsed.forEach(n => n.pubDate = new Date(n.pubDate));
-                if (parsed.length > 0) {
-                    newsItems = parsed;
-                    return; 
-                }
-            } catch (e) { }
-        }
-
         let tempNews = [];
 
         for (const feed of rssFeeds) {
-            let feedItems = [];
-            
-            // TENTATIVO 1: Servizio standard senza forzatura cache (evita blocchi IP)
             try {
-                const r1 = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`);
-                const d1 = await r1.json();
-                if (d1 && d1.status === 'ok') feedItems = d1.items;
-            } catch(e) {}
-
-            // TENTATIVO 2: Se bloccato, passa al Proxy 1 (CodeTabs)
-            if (feedItems.length === 0) {
-                try {
-                    const r2 = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(feed.url)}`);
-                    const t2 = await r2.text();
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(t2, "text/xml");
-                    const items = Array.from(xml.querySelectorAll("item"));
-                    
-                    feedItems = items.map(item => {
-                        const titleNode = item.querySelector("title");
-                        const linkNode = item.querySelector("link");
-                        const dateNode = item.querySelector("pubDate");
-                        const descNode = item.querySelector("description");
-                        const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
-                        
-                        let rawT = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
-                        return {
-                            title: titleNode ? titleNode.textContent : "",
-                            link: linkNode ? linkNode.textContent : "",
-                            pubDate: dateNode ? dateNode.textContent : "",
-                            description: descNode ? descNode.textContent : "",
-                            content: encodedNode ? encodedNode.textContent : "",
-                            enclosure: { link: extractImageFromXML(item, feed.name, rawT), type: "image/jpeg" }
-                        };
-                    });
-                } catch(e) {}
-            }
-
-            // TENTATIVO 3: Se ancora bloccato, passa al Proxy 2 (CorsProxy)
-            if (feedItems.length === 0) {
-                try {
-                    const r3 = await fetch(`https://corsproxy.io/?${encodeURIComponent(feed.url)}`);
-                    const t3 = await r3.text();
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(t3, "text/xml");
-                    const items = Array.from(xml.querySelectorAll("item"));
-                    
-                    feedItems = items.map(item => {
-                        const titleNode = item.querySelector("title");
-                        const linkNode = item.querySelector("link");
-                        const dateNode = item.querySelector("pubDate");
-                        const descNode = item.querySelector("description");
-                        const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
-                        
-                        let rawT = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
-                        return {
-                            title: titleNode ? titleNode.textContent : "",
-                            link: linkNode ? linkNode.textContent : "",
-                            pubDate: dateNode ? dateNode.textContent : "",
-                            description: descNode ? descNode.textContent : "",
-                            content: encodedNode ? encodedNode.textContent : "",
-                            enclosure: { link: extractImageFromXML(item, feed.name, rawT), type: "image/jpeg" }
-                        };
-                    });
-                } catch(e) {}
-            }
-
-            // Elaborazione finale delle notizie trovate
-            feedItems.slice(0, feed.limit).forEach(item => {
-                let rawText = item.content ? item.content : item.description;
-                let cleanText = cleanHTML(rawText);
-                let cleanTitle = formatTitle(item.title);
+                // Utilizziamo l'API rss2json standard per semplicità, ma con un try/catch robusto
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
                 
-                if (!cleanTitle || isAdOrSpam(cleanTitle, cleanText)) return;
-                if (isDuplicate(cleanTitle, tempNews)) return;
+                const fetchPromise = fetch(apiUrl);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
                 
-                tempNews.push({
-                    source: feed.name,
-                    category: getCategory(cleanTitle),
-                    title: cleanTitle,
-                    image: extractImage(item, feed.name),
-                    link: item.link || "https://www.comune.sommarivadelbosco.cn.it/",
-                    pubDate: item.pubDate ? new Date(item.pubDate) : new Date()
-                });
-            });
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
+                const data = await response.json();
+
+                if (data && data.status === 'ok') {
+                    const items = data.items.slice(0, feed.limit); 
+                    items.forEach(item => {
+                        let rawText = item.content ? item.content : item.description;
+                        let cleanText = cleanHTML(rawText);
+                        let cleanTitle = formatTitle(item.title);
+                        
+                        if (!cleanTitle || isAdOrSpam(cleanTitle, cleanText)) return;
+                        if (isDuplicate(cleanTitle, tempNews)) return;
+                        
+                        let imgUrl = NEWS_DEFAULT_IMAGE;
+                        if (feed.name !== "Gazzetta d'Alba") {
+                            if (item.thumbnail) imgUrl = item.thumbnail;
+                            else if (item.enclosure && item.enclosure.link) imgUrl = item.enclosure.link;
+                            else {
+                                let extracted = extractImageFromHTML(item.content || item.description);
+                                if (extracted) imgUrl = extracted;
+                            }
+                        }
+
+                        tempNews.push({
+                            source: feed.name,
+                            category: getCategory(cleanTitle),
+                            title: cleanTitle,
+                            image: imgUrl,
+                            link: item.link || "https://www.comune.sommarivadelbosco.cn.it/",
+                            pubDate: new Date(item.pubDate.replace(' ', 'T'))
+                        });
+                    });
+                }
+            } catch (error) {
+                // In caso di errore sulla singola testata, il codice passa alla successiva senza bloccarsi
+                console.log("Errore caricamento da: " + feed.name);
+            }
         }
 
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
-            
-            try {
-                localStorage.setItem(CACHE_KEY, JSON.stringify(newsItems));
-                localStorage.setItem(CACHE_TIME_KEY, now.toString());
-            } catch (e) { }
         }
     }
 
@@ -549,9 +461,11 @@
         }, 800); 
     }
 
+    // Avvio sistema
     showNews();
     setInterval(showNews, DISPLAY_DURATION);
 
+    // Carica subito e poi ogni ora
     fetchAllNews();
     setInterval(fetchAllNews, 3600000); 
 
