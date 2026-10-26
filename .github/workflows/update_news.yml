@@ -1,0 +1,30 @@
+name: Aggiorna News JSON
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Si aggiorna automaticamente ogni ora
+  workflow_dispatch:
+
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Esegui script estrazione RSS
+        run: python fetch_news.py
+
+      - name: Commit e push se ci sono novità
+        run: |
+          git config --global user.name 'News Bot'
+          git config --global user.email 'bot@users.noreply.github.com'
+          git add news.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Aggiornamento automatico news.json" && git push)
