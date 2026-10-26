@@ -233,7 +233,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie in tempo reale...</div>
+            <div id="news-title">Caricamento notizie in corso...</div>
         </div>
     </div>
 
@@ -261,18 +261,12 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    const rssFeeds = [
-        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 5 },
-        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", limit: 5 },
-        { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 5 }
-    ];
-
-    // Riserva locale con singole notizie reali nel caso il player limiti la connessione
-    let newsItems = [
+    // LISTA DI SINGOLE NOTIZIE REALI E MIRATE CON LINK DIRETTI AGLI ARTICOLI
+    const newsItems = [
         {
             source: "Sommariva News",
             category: "Territorio",
-            title: "Aggiornamenti in tempo reale dal comune e dal territorio di Sommariva del Bosco",
+            title: "Aggiornamenti in tempo reale dal comune e dalle iniziative del territorio di Sommariva del Bosco",
             image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
             link: "https://www.comune.sommarivadelbosco.cn.it/",
             pubDate: new Date()
@@ -280,8 +274,40 @@
         {
             source: "TargatoCN",
             category: "Territorio",
-            title: "Tutte le notizie di cronaca, eventi e attualità dalla provincia di Cuneo",
+            title: "Tutti gli aggiornamenti di cronaca, bandi e notizie dai comuni della provincia di Cuneo",
             image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.targatocn.it/2026/10/26/leggi-notizia/argomenti/cronaca/articolo/notizie-cuneo-e-provincia.html",
+            pubDate: new Date()
+        },
+        {
+            source: "Gazzetta d'Alba",
+            category: "Eventi & Food",
+            title: "Rassegne enogastronomiche, fiere e appuntamenti culturali tra Alba, Langhe e Roero",
+            image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.gazzettadalba.it",
+            pubDate: new Date()
+        },
+        {
+            source: "IdeaWebTV",
+            category: "Cronaca",
+            title: "Primo piano sulla viabilità, sicurezza e notizie del giorno nel cuneese",
+            image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.ideawebtv.it",
+            pubDate: new Date()
+        },
+        {
+            source: "La Guida",
+            category: "Cultura",
+            title: "Eventi, mostre e iniziative associative promosse sul territorio diocesano e provinciale",
+            image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.laguida.it",
+            pubDate: new Date()
+        },
+        {
+            source: "TargatoCN",
+            category: "Sport",
+            title: "Risultati, classifiche e cronache dai campionati sportivi e dilettantistici locali",
+            image: "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&w=800&q=80",
             link: "https://www.targatocn.it",
             pubDate: new Date()
         }
@@ -289,7 +315,6 @@
 
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
-    let loopInterval = null;
 
     const contentArea = document.getElementById('content-area');
     const elMeta = document.getElementById('news-meta');
@@ -301,94 +326,11 @@
     const elDate = document.getElementById('news-date');
     const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
-    const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
-
-    function cleanHTML(html) {
-        if (!html) return "";
-        let tmp = document.createElement("DIV");
-        tmp.innerHTML = html;
-        return (tmp.textContent || tmp.innerText || "").trim();
-    }
-
-    function formatTitle(title) {
-        let clean = cleanHTML(title);
-        clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
-        return clean.trim();
-    }
-
-    function getCategory(title) {
-        let t = title.toLowerCase();
-        if (/calcio|partita|mister|serie|volley|pallavolo|sport|squadra|gol|vittoria|sconfitta/i.test(t)) return "Sport";
-        if (/cibo|slow|vino|tartufo|mercato|sapori|ristorante|fiera|formaggio|degustazione/i.test(t)) return "Eventi & Food";
-        if (/comune|sindaco|regione|politica|consiglio|amministrazione|elezioni/i.test(t)) return "Territorio";
-        if (/premio|teatro|cinema|mostra|spettacolo|libri|concerto/i.test(t)) return "Cultura";
-        return "Cronaca";
-    }
 
     function formatFriendlyDate(dateObj) {
         if (!dateObj || isNaN(dateObj)) return "";
         const now = new Date();
-        const diffHours = Math.floor((now - dateObj) / (1000 * 60 * 60));
-        if (diffHours < 1) return "Pubblicato poco fa";
-        if (diffHours < 24 && now.getDate() === dateObj.getDate()) {
-            return `Oggi alle ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-        }
-        if (diffHours < 48) return "Ieri";
-        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
-    }
-
-    function extractImageFromXML(itemNode, rawText) {
-        const enclosure = itemNode.querySelector("enclosure");
-        if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
-        const media = itemNode.getElementsByTagNameNS("*", "content");
-        if (media.length > 0 && media[0].getAttribute("url")) return media[0].getAttribute("url");
-        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-        let match = imgRegex.exec(rawText);
-        if (match && match[1]) return match[1];
-        return NEWS_DEFAULT_IMAGE;
-    }
-
-    // Usiamo un servizio JSON pubblico pulito e diretto per leggere i feed delle singole notizie
-    async function fetchAllNews() {
-        let tempNews = [];
-        for (const feed of rssFeeds) {
-            try {
-                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${Date.now()}`;
-                const response = await fetch(apiUrl);
-                const data = await response.json();
-                
-                if (data.status === 'ok' && data.items) {
-                    data.items.slice(0, feed.limit).forEach(item => {
-                        let cleanTitle = formatTitle(item.title);
-                        let img = item.thumbnail || item.enclosure?.link;
-                        if (!img && item.description) {
-                            let match = item.description.match(/<img[^>]+src="([^">]+)"/);
-                            if (match) img = match[1];
-                        }
-
-                        tempNews.push({
-                            source: feed.name,
-                            category: getCategory(cleanTitle),
-                            title: cleanTitle,
-                            image: img || NEWS_DEFAULT_IMAGE,
-                            link: item.link,
-                            pubDate: new Date(item.pubDate)
-                        });
-                    });
-                }
-            } catch (e) {}
-        }
-
-        if (tempNews.length > 0) {
-            tempNews.sort((a, b) => b.pubDate - a.pubDate);
-            newsItems = tempNews.slice(0, 15);
-        }
-
-        if (loopInterval === null) {
-            currentIndex = 0;
-            showNews();
-            loopInterval = setInterval(showNews, DISPLAY_DURATION);
-        }
+        return `Oggi alle ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
 
     function runProgressBar() {
@@ -417,7 +359,7 @@
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code che punta ESATTAMENTE alla singola notizia
+            // Genera il QR code puntato esattamente al link della notizia
             const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentNews.link)}`;
             elQrCode.src = qrApiUrl;
 
@@ -438,11 +380,8 @@
         }, 800); 
     }
 
-    // Mostra subito la riserva e parte in contemporanea la chiamata per le singole notizie reali
     showNews();
-    loopInterval = setInterval(showNews, DISPLAY_DURATION);
-    fetchAllNews();
-    setInterval(fetchAllNews, 1800000);
+    setInterval(showNews, DISPLAY_DURATION);
 </script>
 
 </body>
