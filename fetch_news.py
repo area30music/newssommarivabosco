@@ -2,7 +2,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import json
 import datetime
-import re
 
 feeds = [
     {"name": "TargatoCN", "url": "https://www.targatocn.it/rss.xml", "limit": 3},
@@ -11,7 +10,6 @@ feeds = [
     {"name": "La Guida", "url": "https://www.laguida.it/feed/", "limit": 3}
 ]
 
-# Immagini tematiche di riserva di alta qualità basate sugli argomenti
 THEME_IMAGES = {
     "halloween": "https://images.unsplash.com/photo-1508385082359-f38ae991e8f2?auto=format&fit=crop&w=800&q=80",
     "sport": "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&w=800&q=80",
@@ -23,7 +21,6 @@ THEME_IMAGES = {
 
 all_news = []
 
-# Notizia fissa iniziale del Comune di Sommariva
 all_news.append({
     "source": "Sommariva News",
     "category": "Territorio",
@@ -45,10 +42,6 @@ for feed in feeds:
                 title = item.find('title')
                 link = item.find('link')
                 pubDate = item.find('pubDate')
-                description = item.find('description')
-                
-                encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')
-                raw_text = (encoded.text if encoded is not None else "") + (description.text if description is not None else "")
                 
                 title_text = title.text if title is not None else ""
                 link_text = link.text if link is not None else ""
@@ -59,7 +52,6 @@ for feed in feeds:
                 clean_title = title_text.strip()
                 t_lower = clean_title.lower()
 
-                # Selezione intelligente dell'immagine in base al tema del titolo
                 selected_img = THEME_IMAGES["cronaca"]
                 if any(w in t_lower for w in ["halloween", "brivido", "museo", "festa", "notte"]):
                     selected_img = THEME_IMAGES["halloween"]
@@ -72,7 +64,6 @@ for feed in feeds:
                 elif any(w in t_lower for w in ["comune", "sindaco", "politica", "regione", "amministrazione", "territorio"]):
                     selected_img = THEME_IMAGES["territorio"]
 
-                # Categoria automatica
                 category = "Cronaca"
                 if selected_img == THEME_IMAGES["sport"]: category = "Sport"
                 elif selected_img == THEME_IMAGES["food"]: category = "Eventi & Food"
