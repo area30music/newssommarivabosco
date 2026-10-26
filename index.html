@@ -221,7 +221,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie...</div>
+            <div id="news-title">Caricamento notizie in tempo reale...</div>
         </div>
     </div>
 
@@ -249,54 +249,29 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // NOTIZIE SPECIFICHE E MIRATE CON LINK DIRETTI AI SINGOLI ARTICOLI
-    const newsItems = [
+    // Configurazione delle testate con il limite di articoli desiderato per ciascuna
+    const rssFeeds = [
+        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 3 },
+        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", limit: 3 },
+        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", limit: 3 },
+        { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
+    ];
+
+    // Notizia fissa iniziale di Sommariva del Bosco
+    let newsItems = [
         {
             source: "Sommariva News",
             category: "Territorio",
             title: "Aggiornamenti in tempo reale dal comune e dalle iniziative del territorio di Sommariva del Bosco",
             image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.comune.sommarivadelbosco.cn.it/"
-        },
-        {
-            source: "TargatoCN",
-            category: "Territorio",
-            title: "Nuovi interventi di riqualificazione urbana e viabilità approvati nel Roero e nei comuni limitrofi",
-            image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.targatocn.it/cronaca"
-        },
-        {
-            source: "Gazzetta d'Alba",
-            category: "Eventi & Food",
-            title: "Grandi fiere d'autunno, mercati della terra e rassegne enogastronomiche nelle Langhe e nel Roero",
-            image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.gazzettadalba.it/attualita"
-        },
-        {
-            source: "IdeaWebTV",
-            category: "Cronaca",
-            title: "Primo piano sulla sicurezza stradale, controlli delle forze dell'ordine e cronaca provinciale",
-            image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.ideawebtv.it/cronaca"
-        },
-        {
-            source: "La Guida",
-            category: "Cultura",
-            title: "Mostre d'arte, stagioni teatrali e presentazioni di libri promosse dalle associazioni culturali locali",
-            image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.laguida.it/cultura"
-        },
-        {
-            source: "TargatoCN",
-            category: "Sport",
-            title: "I risultati del fine settimana dai campionati dilettantistici di calcio, pallavolo e ciclismo cuneese",
-            image: "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.targatocn.it/sport"
+            link: "https://www.comune.sommarivadelbosco.cn.it/",
+            pubDate: new Date()
         }
     ];
 
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
+    let loopInterval = null;
 
     const contentArea = document.getElementById('content-area');
     const elImage = document.getElementById('news-image');
@@ -306,6 +281,105 @@
     const elDate = document.getElementById('news-date');
     const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
+    const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
+
+    function cleanHTML(html) {
+        if (!html) return "";
+        let tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        return (tmp.textContent || tmp.innerText || "").trim();
+    }
+
+    function formatTitle(title) {
+        let clean = cleanHTML(title);
+        clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
+        return clean.trim();
+    }
+
+    function getCategory(title) {
+        let t = title.toLowerCase();
+        if (/calcio|partita|mister|serie|volley|pallavolo|sport|squadra|gol|vittoria|sconfitta/i.test(t)) return "Sport";
+        if (/cibo|slow|vino|tartufo|mercato|sapori|ristorante|fiera|formaggio|degustazione/i.test(t)) return "Eventi & Food";
+        if (/comune|sindaco|regione|politica|consiglio|amministrazione|elezioni/i.test(t)) return "Territorio";
+        if (/premio|teatro|cinema|mostra|spettacolo|libri|concerto/i.test(t)) return "Cultura";
+        return "Cronaca";
+    }
+
+    function formatFriendlyDate(dateObj) {
+        if (!dateObj || isNaN(dateObj)) return "";
+        const now = new Date();
+        const diffHours = Math.floor((now - dateObj) / (1000 * 60 * 60));
+        if (diffHours < 1) return "Pubblicato poco fa";
+        if (diffHours < 24 && now.getDate() === dateObj.getDate()) {
+            return `Oggi alle ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+        if (diffHours < 48) return "Ieri";
+        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+    }
+
+    function extractImage(itemNode, rawText) {
+        const enclosure = itemNode.querySelector("enclosure");
+        if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
+        const media = itemNode.getElementsByTagNameNS("*", "content");
+        if (media.length > 0 && media[0].getAttribute("url")) return media[0].getAttribute("url");
+        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
+        let match = imgRegex.exec(rawText);
+        if (match && match[1]) return match[1];
+        return NEWS_DEFAULT_IMAGE;
+    }
+
+    // Funzione per scaricare i feed reali tramite proxy pubblico sicuro
+    async function fetchLiveNews() {
+        let fetchedArticles = [];
+        
+        for (const feed of rssFeeds) {
+            try {
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feed.url)}&_=${Date.now()}`;
+                const response = await fetch(proxyUrl);
+                if (!response.ok) continue;
+                
+                const xmlText = await response.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(xmlText, "text/xml");
+                const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
+
+                items.forEach(item => {
+                    const titleNode = item.querySelector("title");
+                    const linkNode = item.querySelector("link");
+                    const dateNode = item.querySelector("pubDate");
+                    const descNode = item.querySelector("description");
+                    const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
+
+                    if (!titleNode || !linkNode) return;
+                    let rawText = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
+                    let cleanTitle = formatTitle(titleNode.textContent);
+                    let articleLink = linkNode.textContent.trim();
+
+                    if (cleanTitle.length > 5 && articleLink) {
+                        fetchedArticles.push({
+                            source: feed.name,
+                            category: getCategory(cleanTitle),
+                            title: cleanTitle,
+                            image: extractImage(item, rawText),
+                            link: articleLink,
+                            pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
+                        });
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // Se abbiamo scaricato gli articoli, uniamo Sommariva all'inizio e al massimo 14 articoli delle testate (totale max 15)
+        if (fetchedArticles.length > 0) {
+            newsItems = [newsItems[0], ...fetchedArticles.slice(0, 14)];
+        }
+
+        if (loopInterval === null) {
+            currentIndex = 0;
+            showNews();
+            loopInterval = setInterval(showNews, DISPLAY_DURATION);
+        }
+    }
 
     function showNews() {
         if (newsItems.length === 0) return;
@@ -319,13 +393,10 @@
             elImage.src = currentNews.image;
             elCategory.textContent = currentNews.category;
             elSource.textContent = "Fonte: " + currentNews.source;
-            
-            const now = new Date();
-            elDate.textContent = `Oggi alle ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            
+            elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code puntato esattamente alla pagina specifica della notizia
+            // Genera il QR code puntato ESATTAMENTE al link della singola notizia
             elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentNews.link)}`;
 
             let len = currentNews.title.length;
@@ -348,8 +419,11 @@
         }, 800); 
     }
 
+    // Parte subito con la notizia del comune e in parallelo scarica le singole notizie vere delle testate
     showNews();
-    setInterval(showNews, DISPLAY_DURATION);
+    loopInterval = setInterval(showNews, DISPLAY_DURATION);
+    fetchLiveNews();
+    setInterval(fetchLiveNews, 1800000);
 </script>
 
 </body>
