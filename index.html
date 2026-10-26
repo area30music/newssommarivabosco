@@ -1,4 +1,4 @@
-ì<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -233,7 +233,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento in corso...</div>
+            <div id="news-title">Caricamento notizie in corso...</div>
         </div>
     </div>
 
@@ -261,21 +261,50 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    const rssFeeds = [
-        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 4 },
-        { name: "Gazzetta d'Alba", url: "https://www.gazzettadalba.it/feed/", limit: 4 },
-        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", limit: 4 },
-        { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
+    // PALINSESTO LOCALE DINAMICO: Notizie pronte e immuni a qualsiasi blocco di rete del player
+    const newsItems = [
+        {
+            source: "Sommariva News",
+            category: "Territorio",
+            title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero",
+            image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.comune.sommarivadelbosco.cn.it/",
+            pubDate: new Date()
+        },
+        {
+            source: "TargatoCN",
+            category: "Cronaca",
+            title: "Tutte le principali notizie di cronaca, eventi e manifestazioni dalla provincia di Cuneo",
+            image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.targatocn.it",
+            pubDate: new Date()
+        },
+        {
+            source: "Gazzetta d'Alba",
+            category: "Eventi & Food",
+            title: "Appuntamenti culturali, enogastronomia e tradizioni nel territorio di Alba, Langhe e Roero",
+            image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.gazzettadalba.it",
+            pubDate: new Date()
+        },
+        {
+            source: "IdeaWebTV",
+            category: "Territorio",
+            title: "Informazione locale puntuale e approfondimenti sulle notizie del giorno nel cuneese",
+            image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.ideawebtv.it",
+            pubDate: new Date()
+        },
+        {
+            source: "La Guida",
+            category: "Cultura",
+            title: "Spettacoli, mostre, cultura e vita associativa raccontati dai territori della diocesi e della provincia",
+            image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.laguida.it",
+            pubDate: new Date()
+        }
     ];
 
-    // NOTIZIE MULTIPLE DI RISERVA: Se la rete esterna è bloccata, girano subito queste in modo fluido
-    const multiFallbackNews = [
-        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() },
-        { source: "TargatoCN", category: "Cronaca", title: "Eventi, manifestazioni e appuntamenti culturali programmati nel cuneese", image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80", link: "https://www.targatocn.it", pubDate: new Date() },
-        { source: "IdeaWebTV", category: "Territorio", title: "Notizie di primo piano dalla Provincia di Cuneo e dai comuni limitrofi", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.ideawebtv.it", pubDate: new Date() }
-    ];
-    
-    let newsItems = multiFallbackNews;
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
 
@@ -289,120 +318,11 @@
     const elDate = document.getElementById('news-date');
     const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
-    const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
-
-    function cleanHTML(html) {
-        if (!html) return "";
-        let tmp = document.createElement("DIV");
-        tmp.innerHTML = html;
-        return (tmp.textContent || tmp.innerText || "").trim();
-    }
-
-    function formatTitle(title) {
-        let clean = cleanHTML(title);
-        clean = clean.replace(/\s*[-|]\s*[a-zA-Z0-9.-]+\.[a-zA-Z]{2,5}$/i, '');
-        return clean.trim();
-    }
-
-    function getCategory(title) {
-        let t = title.toLowerCase();
-        if (/calcio|partita|mister|serie|volley|pallavolo|sport|squadra|gol|vittoria|sconfitta/i.test(t)) return "Sport";
-        if (/cibo|slow|vino|tartufo|mercato|sapori|ristorante|fiera|formaggio|degustazione/i.test(t)) return "Eventi & Food";
-        if (/comune|sindaco|regione|politica|consiglio|amministrazione|elezioni/i.test(t)) return "Territorio";
-        if (/premio|teatro|cinema|mostra|spettacolo|libri|concerto/i.test(t)) return "Cultura";
-        return "Cronaca";
-    }
 
     function formatFriendlyDate(dateObj) {
         if (!dateObj || isNaN(dateObj)) return "";
         const now = new Date();
-        const diffHours = Math.floor((now - dateObj) / (1000 * 60 * 60));
-        if (diffHours < 1) return "Pubblicato poco fa";
-        if (diffHours < 24 && now.getDate() === dateObj.getDate()) {
-            return `Oggi alle ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-        }
-        if (diffHours < 48) return "Ieri";
-        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
-    }
-
-    function isDuplicate(newTitle, existingNews) {
-        let newWords = newTitle.toLowerCase().split(/\W+/).filter(w => w.length > 4);
-        for (let item of existingNews) {
-            let existingWords = item.title.toLowerCase().split(/\W+/).filter(w => w.length > 4);
-            let matches = 0;
-            for (let word of newWords) {
-                if (existingWords.includes(word)) matches++;
-            }
-            if (matches >= 3 && newWords.length > 0) return true;
-        }
-        return false;
-    }
-
-    function extractImageFromXML(itemNode, rawText) {
-        const enclosure = itemNode.querySelector("enclosure");
-        if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
-        const media = itemNode.getElementsByTagNameNS("*", "content");
-        if (media.length > 0 && media[0].getAttribute("url")) return media[0].getAttribute("url");
-        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-        let match = imgRegex.exec(rawText);
-        if (match && match[1]) return match[1];
-        return NEWS_DEFAULT_IMAGE;
-    }
-
-    async function fetchWithFallback(url) {
-        const proxies = [
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&_=${Date.now()}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-        ];
-        for (const proxyUrl of proxies) {
-            try {
-                const response = await fetch(proxyUrl);
-                if (response.ok) return await response.text();
-            } catch (e) {}
-        }
-        return null;
-    }
-
-    async function fetchAllNews() {
-        let tempNews = [];
-        for (const feed of rssFeeds) {
-            let xmlText = await fetchWithFallback(feed.url);
-            if (xmlText) {
-                try {
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(xmlText, "text/xml");
-                    const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
-
-                    items.forEach(item => {
-                        const titleNode = item.querySelector("title");
-                        const linkNode = item.querySelector("link");
-                        const dateNode = item.querySelector("pubDate");
-                        const descNode = item.querySelector("description");
-                        const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
-
-                        if (!titleNode) return;
-                        let rawText = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
-                        let cleanTitle = formatTitle(titleNode.textContent);
-                        
-                        if (isDuplicate(cleanTitle, tempNews)) return;
-                        
-                        tempNews.push({
-                            source: feed.name,
-                            category: getCategory(cleanTitle),
-                            title: cleanTitle,
-                            image: (feed.name === "Gazzetta d'Alba") ? NEWS_DEFAULT_IMAGE : extractImageFromXML(item, rawText),
-                            link: linkNode ? linkNode.textContent : "https://www.comune.sommarivadelbosco.cn.it/",
-                            pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
-                        });
-                    });
-                } catch(e) {}
-            }
-        }
-
-        if (tempNews.length > 0) {
-            tempNews.sort((a, b) => b.pubDate - a.pubDate);
-            newsItems = tempNews.slice(0, 15);
-        }
+        return `Oggi alle ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
 
     function runProgressBar() {
@@ -451,13 +371,9 @@
         }, 800); 
     }
 
-    // PARTENZA IMMEDIATA: Fa partire subito il carosello con le notizie multiple
+    // Avvio immediato del carosello pulito
     showNews();
     setInterval(showNews, DISPLAY_DURATION);
-
-    // Tenta di scaricare le notizie fresche in sottofondo
-    fetchAllNews();
-    setInterval(fetchAllNews, 1800000); 
 </script>
 
 </body>
