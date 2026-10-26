@@ -98,7 +98,7 @@
             justify-content: center; 
             height: 58vh; 
             overflow: hidden;
-            padding-right: 15vw; 
+            padding-right: 18vw; /* Spazio aumentato per evitare sovrapposizioni col QR code ingrandito */
         }
 
         #news-category {
@@ -155,6 +155,7 @@
             margin-left: 2.5vw;
         }
 
+        /* QR CODE INGRANDITO PER IL LED WALL */
         #qr-container {
             position: absolute;
             bottom: 2.2vh;
@@ -163,23 +164,24 @@
             flex-direction: column;
             align-items: center;
             background-color: #ffffff;
-            padding: 1.2vh 1.2vw;
-            border-radius: 1.8vh;
-            box-shadow: 0 0.5vh 2vh rgba(0,0,0,0.2);
+            padding: 1.6vh 1.6vw;
+            border-radius: 2.2vh;
+            box-shadow: 0 0.8vh 2.5vh rgba(0,0,0,0.3);
         }
 
         #qr-code {
-            width: 14vh;  
-            height: 14vh;
+            width: 20vh;  /* Ingrandito notevolmente da 14vh a 20vh */
+            height: 20vh;
             object-fit: contain;
         }
 
         #qr-label {
-            font-size: 1.7vh;
-            font-weight: 700;
+            font-size: 2.1vh; /* Testo più grande e leggibile da lontano */
+            font-weight: 800;
             color: #000000;
-            margin-top: 0.6vh;
+            margin-top: 0.8vh;
             text-transform: uppercase;
+            letter-spacing: 0.05vw;
         }
 
         #progress-bar-container {
@@ -299,8 +301,8 @@
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code puntato ESATTAMENTE al link della singola notizia
-            elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentNews.link)}`;
+            // Genera il QR code grande e mirato al link del singolo articolo
+            elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentNews.link)}`;
 
             let len = currentNews.title.length;
             if (len < 35) elTitle.style.fontSize = "7.5vh"; 
@@ -322,7 +324,6 @@
         }, 800); 
     }
 
-    // Carica il file JSON locale generato dal bot
     async function loadNewsData() {
         try {
             const response = await fetch('./news.json?_=' + Date.now());
@@ -341,7 +342,7 @@
     }
 
     loadNewsData();
-    setInterval(loadNewsData, 600000); // Rilegge il file aggiornato ogni 10 minuti
+    setInterval(loadNewsData, 600000);
 </script>
 
 </body>
