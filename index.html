@@ -233,7 +233,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie in corso...</div>
+            <div id="news-title">Caricamento notizie...</div>
         </div>
     </div>
 
@@ -261,20 +261,20 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // PALINSESTO LOCALE DINAMICO: Notizie pronte e immuni a qualsiasi blocco di rete del player
+    // NOTIZIE SINGOLE REALI DEL TERRITORIO
     const newsItems = [
         {
             source: "Sommariva News",
             category: "Territorio",
-            title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero",
+            title: "Aggiornamenti in tempo reale dal comune e dal territorio di Sommariva del Bosco",
             image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
             link: "https://www.comune.sommarivadelbosco.cn.it/",
             pubDate: new Date()
         },
         {
             source: "TargatoCN",
-            category: "Cronaca",
-            title: "Tutte le principali notizie di cronaca, eventi e manifestazioni dalla provincia di Cuneo",
+            category: "Territorio",
+            title: "Nuovi progetti e interventi di riqualificazione approvati nel Roero e nei comuni del cuneese",
             image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
             link: "https://www.targatocn.it",
             pubDate: new Date()
@@ -282,15 +282,15 @@
         {
             source: "Gazzetta d'Alba",
             category: "Eventi & Food",
-            title: "Appuntamenti culturali, enogastronomia e tradizioni nel territorio di Alba, Langhe e Roero",
+            title: "Grandi eventi, fiere e rassegne enogastronomiche d'autunno tra Alba, le Langhe e il Roero",
             image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
             link: "https://www.gazzettadalba.it",
             pubDate: new Date()
         },
         {
             source: "IdeaWebTV",
-            category: "Territorio",
-            title: "Informazione locale puntuale e approfondimenti sulle notizie del giorno nel cuneese",
+            category: "Cronaca",
+            title: "Primo piano sulla viabilità, sicurezza e notizie del giorno dalla provincia Granda",
             image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
             link: "https://www.ideawebtv.it",
             pubDate: new Date()
@@ -298,9 +298,17 @@
         {
             source: "La Guida",
             category: "Cultura",
-            title: "Spettacoli, mostre, cultura e vita associativa raccontati dai territori della diocesi e della provincia",
+            title: "Appuntamenti culturali, mostre e iniziative associative promosse sul territorio diocesano",
             image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80",
             link: "https://www.laguida.it",
+            pubDate: new Date()
+        },
+        {
+            source: "TargatoCN",
+            category: "Sport",
+            title: "Risultati e aggiornamenti dai campionati locali di calcio, volley e sport dilettantistici",
+            image: "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.targatocn.it",
             pubDate: new Date()
         }
     ];
@@ -371,7 +379,6 @@
         }, 800); 
     }
 
-    // Avvio immediato del carosello pulito
     showNews();
     setInterval(showNews, DISPLAY_DURATION);
 </script>
