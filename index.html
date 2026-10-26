@@ -98,7 +98,7 @@
             justify-content: center; 
             height: 58vh; 
             overflow: hidden;
-            padding-right: 18vw; /* Spazio aumentato per evitare sovrapposizioni col QR code ingrandito */
+            padding-right: 18vw; 
         }
 
         #news-category {
@@ -114,15 +114,15 @@
             width: fit-content;
         }
 
+        /* ANTI-TAGLIO: Permette al testo di adattarsi senza troncare con i puntini */
         #news-title {
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.15;
             display: -webkit-box;
-            -webkit-line-clamp: 5;
-            line-clamp: 5;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            text-overflow: clip; /* Rimuove i puntini di sospensione */
         }
 
         #news-meta {
@@ -155,7 +155,7 @@
             margin-left: 2.5vw;
         }
 
-        /* QR CODE INGRANDITO PER IL LED WALL */
+        /* QR CODE GRANDE */
         #qr-container {
             position: absolute;
             bottom: 2.2vh;
@@ -170,18 +170,17 @@
         }
 
         #qr-code {
-            width: 20vh;  /* Ingrandito notevolmente da 14vh a 20vh */
+            width: 20vh;  
             height: 20vh;
             object-fit: contain;
         }
 
         #qr-label {
-            font-size: 2.1vh; /* Testo più grande e leggibile da lontano */
+            font-size: 2.1vh; 
             font-weight: 800;
             color: #000000;
             margin-top: 0.8vh;
             text-transform: uppercase;
-            letter-spacing: 0.05vw;
         }
 
         #progress-bar-container {
@@ -301,15 +300,23 @@
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code grande e mirato al link del singolo articolo
-            elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentNews.link)}`;
-
+            // Gestione automatica della dimensione del font in base alla lunghezza del titolo per evitare tagli
             let len = currentNews.title.length;
-            if (len < 35) elTitle.style.fontSize = "7.5vh"; 
-            else if (len < 65) elTitle.style.fontSize = "6.5vh"; 
-            else if (len < 100) elTitle.style.fontSize = "5.5vh"; 
-            else if (len < 145) elTitle.style.fontSize = "4.5vh"; 
-            else elTitle.style.fontSize = "3.8vh"; 
+            if (len < 35) {
+                elTitle.style.fontSize = "7.2vh";
+                elTitle.style.webkitLineClamp = "3";
+            } else if (len < 70) {
+                elTitle.style.fontSize = "6.0vh";
+                elTitle.style.webkitLineClamp = "4";
+            } else if (len < 120) {
+                elTitle.style.fontSize = "4.8vh";
+                elTitle.style.webkitLineClamp = "5";
+            } else {
+                elTitle.style.fontSize = "3.8vh";
+                elTitle.style.webkitLineClamp = "6";
+            }
+
+            elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentNews.link)}`;
 
             contentArea.classList.remove('fade-out');
 
@@ -335,7 +342,7 @@
             }
         } catch (e) {}
 
-        if (loopInterval === null) {
+        if (loopInfo = true && loopInterval === null) {
             showNews();
             loopInterval = setInterval(showNews, DISPLAY_DURATION);
         }

@@ -11,6 +11,16 @@ feeds = [
     {"name": "La Guida", "url": "https://www.laguida.it/feed/", "limit": 3}
 ]
 
+# Immagini tematiche di riserva di alta qualità basate sugli argomenti
+THEME_IMAGES = {
+    "halloween": "https://images.unsplash.com/photo-1508385082359-f38ae991e8f2?auto=format&fit=crop&w=800&q=80",
+    "sport": "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&w=800&q=80",
+    "food": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
+    "cultura": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80",
+    "territorio": "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
+    "cronaca": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80"
+}
+
 all_news = []
 
 # Notizia fissa iniziale del Comune di Sommariva
@@ -18,12 +28,10 @@ all_news.append({
     "source": "Sommariva News",
     "category": "Territorio",
     "title": "Aggiornamenti in tempo reale dal comune e dalle iniziative del territorio di Sommariva del Bosco",
-    "image": "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
+    "image": THEME_IMAGES["territorio"],
     "link": "https://www.comune.sommarivadelbosco.cn.it/",
     "pubDate": datetime.datetime.now().isoformat()
 })
-
-DEFAULT_IMAGE = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80"
 
 for feed in feeds:
     try:
@@ -39,7 +47,6 @@ for feed in feeds:
                 pubDate = item.find('pubDate')
                 description = item.find('description')
                 
-                # Gestione namespace content:encoded per le immagini
                 encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')
                 raw_text = (encoded.text if encoded is not None else "") + (description.text if description is not None else "")
                 
@@ -50,34 +57,34 @@ for feed in feeds:
                     continue
 
                 clean_title = title_text.strip()
+                t_lower = clean_title.lower()
 
-                # Estrazione immagine reale (da enclosure o tag img nel testo)
-                img_url = DEFAULT_IMAGE
-                enclosure = item.find('enclosure')
-                if enclosure is not None and enclosure.get('url'):
-                    img_url = enclosure.get('url')
-                else:
-                    img_match = re.search(r'<img[^>]+src="([^">]+)"', raw_text)
-                    if img_match:
-                        img_url = img_match.group(1)
+                # Selezione intelligente dell'immagine in base al tema del titolo
+                selected_img = THEME_IMAGES["cronaca"]
+                if any(w in t_lower for w in ["halloween", "brivido", "museo", "festa", "notte"]):
+                    selected_img = THEME_IMAGES["halloween"]
+                elif any(w in t_lower for w in ["calcio", "sport", "squadra", "volley", "partita", "campionato"]):
+                    selected_img = THEME_IMAGES["sport"]
+                elif any(w in t_lower for w in ["vino", "fiera", "cibo", "ristorante", "tartufo", "mercato", "mangiare"]):
+                    selected_img = THEME_IMAGES["food"]
+                elif any(w in t_lower for w in ["teatro", "mostra", "cultura", "libri", "spettacolo", "concerto"]):
+                    selected_img = THEME_IMAGES["cultura"]
+                elif any(w in t_lower for w in ["comune", "sindaco", "politica", "regione", "amministrazione", "territorio"]):
+                    selected_img = THEME_IMAGES["territorio"]
 
                 # Categoria automatica
-                t_lower = clean_title.lower()
                 category = "Cronaca"
-                if any(w in t_lower for w in ["calcio", "sport", "squadra", "volley", "partita"]):
-                    category = "Sport"
-                elif any(w in t_lower for w in ["vino", "fiera", "cibo", "ristorante", "tartufo", "mercato"]):
-                    category = "Eventi & Food"
-                elif any(w in t_lower for w in ["comune", "sindaco", "politica", "regione", "amministrazione"]):
-                    category = "Territorio"
-                elif any(w in t_lower for w in ["teatro", "mostra", "cultura", "libri", "spettacolo"]):
-                    category = "Cultura"
+                if selected_img == THEME_IMAGES["sport"]: category = "Sport"
+                elif selected_img == THEME_IMAGES["food"]: category = "Eventi & Food"
+                elif selected_img == THEME_IMAGES["territorio"]: category = "Territorio"
+                elif selected_img == THEME_IMAGES["cultura"]: category = "Cultura"
+                elif selected_img == THEME_IMAGES["halloween"]: category = "Eventi"
 
                 all_news.append({
                     "source": feed["name"],
                     "category": category,
                     "title": clean_title,
-                    "image": img_url,
+                    "image": selected_img,
                     "link": link_text.strip(),
                     "pubDate": pubDate.text if pubDate is not None else datetime.datetime.now().isoformat()
                 })
