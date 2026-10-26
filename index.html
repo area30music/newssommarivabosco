@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ì<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -233,7 +233,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento istantaneo...</div>
+            <div id="news-title">Caricamento in corso...</div>
         </div>
     </div>
 
@@ -268,23 +268,14 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    const fallbackNews = [
-        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() }
+    // NOTIZIE MULTIPLE DI RISERVA: Se la rete esterna è bloccata, girano subito queste in modo fluido
+    const multiFallbackNews = [
+        { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() },
+        { source: "TargatoCN", category: "Cronaca", title: "Eventi, manifestazioni e appuntamenti culturali programmati nel cuneese", image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80", link: "https://www.targatocn.it", pubDate: new Date() },
+        { source: "IdeaWebTV", category: "Territorio", title: "Notizie di primo piano dalla Provincia di Cuneo e dai comuni limitrofi", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.ideawebtv.it", pubDate: new Date() }
     ];
     
-    // CARICAMENTO ISTANTANEO DA MEMORIA LOCALE (SE ESISTE)
-    let newsItems = fallbackNews;
-    try {
-        const savedCache = localStorage.getItem('sora_instant_news');
-        if (savedCache) {
-            let parsed = JSON.parse(savedCache);
-            if (parsed.length > 0) {
-                parsed.forEach(n => n.pubDate = new Date(n.pubDate));
-                newsItems = parsed;
-            }
-        }
-    } catch(e) {}
-
+    let newsItems = multiFallbackNews;
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
 
@@ -411,9 +402,6 @@
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
-            try {
-                localStorage.setItem('sora_instant_news', JSON.stringify(newsItems));
-            } catch(e) {}
         }
     }
 
@@ -463,11 +451,11 @@
         }, 800); 
     }
 
-    // PARTENZA ISTANTANEA: Mostra subito quello che c'è in memoria
+    // PARTENZA IMMEDIATA: Fa partire subito il carosello con le notizie multiple
     showNews();
     setInterval(showNews, DISPLAY_DURATION);
 
-    // Aggiornamento silenzioso in background
+    // Tenta di scaricare le notizie fresche in sottofondo
     fetchAllNews();
     setInterval(fetchAllNews, 1800000); 
 </script>
