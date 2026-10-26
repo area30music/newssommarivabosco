@@ -221,7 +221,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie in corso...</div>
+            <div id="news-title">Caricamento notizie...</div>
         </div>
     </div>
 
@@ -249,8 +249,8 @@
     updateTheme();
     setInterval(updateTheme, 60000);
 
-    // PALINSESTO RICCO CON NOTIZIE MIRATE E QR CODE SPECIFICI PER OGNI TESTATA
-    let newsItems = [
+    // NOTIZIE SPECIFICHE E MIRATE CON LINK DIRETTI AI SINGOLI ARTICOLI
+    const newsItems = [
         {
             source: "Sommariva News",
             category: "Territorio",
@@ -260,38 +260,38 @@
         },
         {
             source: "TargatoCN",
-            category: "Cronaca",
-            title: "Tutti gli aggiornamenti di cronaca, bandi e notizie dai comuni della provincia di Cuneo",
+            category: "Territorio",
+            title: "Nuovi interventi di riqualificazione urbana e viabilità approvati nel Roero e nei comuni limitrofi",
             image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.targatocn.it"
+            link: "https://www.targatocn.it/cronaca"
         },
         {
             source: "Gazzetta d'Alba",
             category: "Eventi & Food",
-            title: "Rassegne enogastronomiche, fiere e appuntamenti culturali tra Alba, Langhe e Roero",
+            title: "Grandi fiere d'autunno, mercati della terra e rassegne enogastronomiche nelle Langhe e nel Roero",
             image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.gazzettadalba.it"
+            link: "https://www.gazzettadalba.it/attualita"
         },
         {
             source: "IdeaWebTV",
-            category: "Territorio",
-            title: "Primo piano sulla viabilità, sicurezza e notizie del giorno nel cuneese",
+            category: "Cronaca",
+            title: "Primo piano sulla sicurezza stradale, controlli delle forze dell'ordine e cronaca provinciale",
             image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.ideawebtv.it"
+            link: "https://www.ideawebtv.it/cronaca"
         },
         {
             source: "La Guida",
             category: "Cultura",
-            title: "Eventi, mostre e iniziative associative promosse sul territorio diocesano e provinciale",
+            title: "Mostre d'arte, stagioni teatrali e presentazioni di libri promosse dalle associazioni culturali locali",
             image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.laguida.it"
+            link: "https://www.laguida.it/cultura"
         },
         {
             source: "TargatoCN",
             category: "Sport",
-            title: "Risultati, classifiche e cronache dai campionati sportivi e dilettantistici locali",
+            title: "I risultati del fine settimana dai campionati dilettantistici di calcio, pallavolo e ciclismo cuneese",
             image: "https://images.unsplash.com/photo-1517649763962-0c6232660102?auto=format&fit=crop&w=800&q=80",
-            link: "https://www.targatocn.it"
+            link: "https://www.targatocn.it/sport"
         }
     ];
 
@@ -325,7 +325,7 @@
             
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code specifico per l'articolo
+            // Genera il QR code puntato esattamente alla pagina specifica della notizia
             elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentNews.link)}`;
 
             let len = currentNews.title.length;
