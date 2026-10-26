@@ -114,7 +114,6 @@
             width: fit-content;
         }
 
-        /* ANTI-TAGLIO: Permette al testo di adattarsi senza troncare con i puntini */
         #news-title {
             font-weight: 800;
             color: var(--text-main);
@@ -122,7 +121,7 @@
             display: -webkit-box;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: clip; /* Rimuove i puntini di sospensione */
+            text-overflow: clip;
         }
 
         #news-meta {
@@ -155,7 +154,6 @@
             margin-left: 2.5vw;
         }
 
-        /* QR CODE GRANDE */
         #qr-container {
             position: absolute;
             bottom: 2.2vh;
@@ -300,7 +298,6 @@
             elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Gestione automatica della dimensione del font in base alla lunghezza del titolo per evitare tagli
             let len = currentNews.title.length;
             if (len < 35) {
                 elTitle.style.fontSize = "7.2vh";
@@ -342,7 +339,7 @@
             }
         } catch (e) {}
 
-        if (loopInfo = true && loopInterval === null) {
+        if (loopInterval === null) {
             showNews();
             loopInterval = setInterval(showNews, DISPLAY_DURATION);
         }
