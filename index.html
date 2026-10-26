@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -233,7 +233,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie in corso...</div>
+            <div id="news-title">Caricamento istantaneo...</div>
         </div>
     </div>
 
@@ -253,8 +253,6 @@
 </div>
 
 <script>
-    localStorage.clear();
-
     function updateTheme() {
         const hour = new Date().getHours();
         if (hour >= 7 && hour < 19) document.body.classList.add('light-mode');
@@ -270,9 +268,22 @@
         { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    let newsItems = [
+    const fallbackNews = [
         { source: "Sommariva News", category: "Territorio", title: "Aggiornamenti in tempo reale dal territorio di Sommariva del Bosco e del Roero", image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80", link: "https://www.comune.sommarivadelbosco.cn.it/", pubDate: new Date() }
     ];
+    
+    // CARICAMENTO ISTANTANEO DA MEMORIA LOCALE (SE ESISTE)
+    let newsItems = fallbackNews;
+    try {
+        const savedCache = localStorage.getItem('sora_instant_news');
+        if (savedCache) {
+            let parsed = JSON.parse(savedCache);
+            if (parsed.length > 0) {
+                parsed.forEach(n => n.pubDate = new Date(n.pubDate));
+                newsItems = parsed;
+            }
+        }
+    } catch(e) {}
 
     let currentIndex = 0;
     const DISPLAY_DURATION = 15000; 
@@ -287,8 +298,6 @@
     const elDate = document.getElementById('news-date');
     const elQrCode = document.getElementById('qr-code');
     const progressBar = document.getElementById('progress-bar');
-
-    const spamKeywords = ["dottore", "dott.", "dott.ssa", "medico", "farmacia", "poliambulatorio", "visita specialistica", "pubblicità", "promozione", "sponsorizzato", "offerta", "sconto", "commerciale", "marketing", "dentista", "clinica"];
     const NEWS_DEFAULT_IMAGE = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80";
 
     function cleanHTML(html) {
@@ -325,11 +334,6 @@
         return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
     }
 
-    function isAdOrSpam(title, description) {
-        let content = (title + " " + description).toLowerCase();
-        return spamKeywords.some(keyword => content.includes(keyword));
-    }
-
     function isDuplicate(newTitle, existingNews) {
         let newWords = newTitle.toLowerCase().split(/\W+/).filter(w => w.length > 4);
         for (let item of existingNews) {
@@ -354,48 +358,62 @@
         return NEWS_DEFAULT_IMAGE;
     }
 
-    // Lettura XML tramite AllOrigins (compatibile con GitHub Pages)
+    async function fetchWithFallback(url) {
+        const proxies = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&_=${Date.now()}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+        ];
+        for (const proxyUrl of proxies) {
+            try {
+                const response = await fetch(proxyUrl);
+                if (response.ok) return await response.text();
+            } catch (e) {}
+        }
+        return null;
+    }
+
     async function fetchAllNews() {
         let tempNews = [];
-
         for (const feed of rssFeeds) {
-            try {
-                const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(feed.url)}&_=${Date.now()}`);
-                if (!response.ok) continue;
-                const xmlText = await response.text();
-                
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(xmlText, "text/xml");
-                const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
+            let xmlText = await fetchWithFallback(feed.url);
+            if (xmlText) {
+                try {
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(xmlText, "text/xml");
+                    const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
 
-                items.forEach(item => {
-                    const titleNode = item.querySelector("title");
-                    const linkNode = item.querySelector("link");
-                    const dateNode = item.querySelector("pubDate");
-                    const descNode = item.querySelector("description");
-                    const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
+                    items.forEach(item => {
+                        const titleNode = item.querySelector("title");
+                        const linkNode = item.querySelector("link");
+                        const dateNode = item.querySelector("pubDate");
+                        const descNode = item.querySelector("description");
+                        const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
 
-                    if (!titleNode) return;
-                    let rawText = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
-                    let cleanTitle = formatTitle(titleNode.textContent);
-                    
-                    if (isAdOrSpam(cleanTitle, cleanHTML(rawText)) || isDuplicate(cleanTitle, tempNews)) return;
-                    
-                    tempNews.push({
-                        source: feed.name,
-                        category: getCategory(cleanTitle),
-                        title: cleanTitle,
-                        image: (feed.name === "Gazzetta d'Alba") ? NEWS_DEFAULT_IMAGE : extractImageFromXML(item, rawText),
-                        link: linkNode ? linkNode.textContent : "https://www.comune.sommarivadelbosco.cn.it/",
-                        pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
+                        if (!titleNode) return;
+                        let rawText = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
+                        let cleanTitle = formatTitle(titleNode.textContent);
+                        
+                        if (isDuplicate(cleanTitle, tempNews)) return;
+                        
+                        tempNews.push({
+                            source: feed.name,
+                            category: getCategory(cleanTitle),
+                            title: cleanTitle,
+                            image: (feed.name === "Gazzetta d'Alba") ? NEWS_DEFAULT_IMAGE : extractImageFromXML(item, rawText),
+                            link: linkNode ? linkNode.textContent : "https://www.comune.sommarivadelbosco.cn.it/",
+                            pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
+                        });
                     });
-                });
-            } catch(e) { }
+                } catch(e) {}
+            }
         }
 
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
+            try {
+                localStorage.setItem('sora_instant_news', JSON.stringify(newsItems));
+            } catch(e) {}
         }
     }
 
@@ -445,13 +463,13 @@
         }, 800); 
     }
 
-    // Avvia subito il carosello
+    // PARTENZA ISTANTANEA: Mostra subito quello che c'è in memoria
     showNews();
     setInterval(showNews, DISPLAY_DURATION);
 
-    // Scarica le notizie reali in sottofondo
+    // Aggiornamento silenzioso in background
     fetchAllNews();
-    setInterval(fetchAllNews, 3600000); 
+    setInterval(fetchAllNews, 1800000); 
 </script>
 
 </body>
