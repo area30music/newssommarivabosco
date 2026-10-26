@@ -221,7 +221,7 @@
         
         <div id="news-text-wrapper">
             <div id="news-category">Territorio</div>
-            <div id="news-title">Caricamento notizie dal territorio...</div>
+            <div id="news-title">Caricamento notizie in corso...</div>
         </div>
     </div>
 
@@ -250,19 +250,27 @@
     setInterval(updateTheme, 60000);
 
     const rssFeeds = [
-        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 4 },
-        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", limit: 4 },
-        { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 4 }
+        { name: "TargatoCN", url: "https://www.targatocn.it/rss.xml", limit: 3 },
+        { name: "IdeaWebTV", url: "https://www.ideawebtv.it/feed/", limit: 3 },
+        { name: "La Guida", url: "https://www.laguida.it/feed/", limit: 3 }
     ];
 
-    // Riserva iniziale immediata nel caso il player carichi prima del fetch
+    // Notizie di riserva mirate per garantire la partenza immediata e fluida
     let newsItems = [
         {
             source: "Sommariva News",
             category: "Territorio",
-            title: "Aggiornamenti in tempo reale dal comune e dal territorio di Sommariva del Bosco",
+            title: "Aggiornamenti in tempo reale dal comune e dalle iniziative di Sommariva del Bosco",
             image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=800&q=80",
             link: "https://www.comune.sommarivadelbosco.cn.it/",
+            pubDate: new Date()
+        },
+        {
+            source: "TargatoCN",
+            category: "Cronaca",
+            title: "Notizie di primo piano, cronaca e attualità dalla provincia di Cuneo",
+            image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80",
+            link: "https://www.targatocn.it",
             pubDate: new Date()
         }
     ];
@@ -303,15 +311,16 @@
         return "Cronaca";
     }
 
-    function extractImage(itemNode, rawText) {
-        const enclosure = itemNode.querySelector("enclosure");
-        if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
-        const media = itemNode.getElementsByTagNameNS("*", "content");
-        if (media.length > 0 && media[0].getAttribute("url")) return media[0].getAttribute("url");
-        const imgRegex = /<img[^>]+src="?([^"\s]+)"?[^>]*>/g;
-        let match = imgRegex.exec(rawText);
-        if (match && match[1]) return match[1];
-        return NEWS_DEFAULT_IMAGE;
+    function formatFriendlyDate(dateObj) {
+        if (!dateObj || isNaN(dateObj)) return "";
+        const now = new Date();
+        const diffHours = Math.floor((now - dateObj) / (1000 * 60 * 60));
+        if (diffHours < 1) return "Pubblicato poco fa";
+        if (diffHours < 24 && now.getDate() === dateObj.getDate()) {
+            return `Oggi alle ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+        if (diffHours < 48) return "Ieri";
+        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
     }
 
     async function fetchLiveNews() {
@@ -319,51 +328,39 @@
         
         for (const feed of rssFeeds) {
             try {
-                // Utilizziamo un proxy di decodifica XML pulito e diretto (AllOrigins)
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feed.url)}&_=${Date.now()}`;
-                const response = await fetch(proxyUrl);
-                if (!response.ok) continue;
+                // Utilizziamo un servizio API JSON pubblico di conversione RSS sicuro e senza blocchi IP diretti
+                const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}&_=${Date.now()}`;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
                 
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(xmlText, "text/xml");
-                const items = Array.from(xml.querySelectorAll("item")).slice(0, feed.limit);
+                if (data.status === 'ok' && data.items) {
+                    data.items.slice(0, feed.limit).forEach(item => {
+                        let cleanTitle = formatTitle(item.title);
+                        let img = item.thumbnail || item.enclosure?.link;
+                        if (!img && item.description) {
+                            let match = item.description.match(/<img[^>]+src="([^">]+)"/);
+                            if (match) img = match[1];
+                        }
 
-                items.forEach(item => {
-                    const titleNode = item.querySelector("title");
-                    const linkNode = item.querySelector("link");
-                    const dateNode = item.querySelector("pubDate");
-                    const descNode = item.querySelector("description");
-                    const encodedNode = item.getElementsByTagNameNS("*", "encoded")[0];
-
-                    if (!titleNode) return;
-                    let rawText = (encodedNode ? encodedNode.textContent : "") || (descNode ? descNode.textContent : "");
-                    let cleanTitle = formatTitle(titleNode.textContent);
-                    let articleLink = linkNode ? linkNode.textContent.trim() : "";
-
-                    if (cleanTitle.length > 5 && articleLink) {
-                        tempNews.push({
-                            source: feed.name,
-                            category: getCategory(cleanTitle),
-                            title: cleanTitle,
-                            image: extractImage(item, rawText),
-                            link: articleLink,
-                            pubDate: dateNode ? new Date(dateNode.textContent) : new Date()
-                        });
-                    }
-                });
+                        if (cleanTitle.length > 5 && item.link) {
+                            tempNews.push({
+                                source: feed.name,
+                                category: getCategory(cleanTitle),
+                                title: cleanTitle,
+                                image: img || NEWS_DEFAULT_IMAGE,
+                                link: item.link,
+                                pubDate: new Date(item.pubDate)
+                            });
+                        }
+                    });
+                }
             } catch (e) {}
         }
 
+        // Se abbiamo scaricato con successo le notizie fresche, aggiorniamo il palinsesto
         if (tempNews.length > 0) {
             tempNews.sort((a, b) => b.pubDate - a.pubDate);
             newsItems = tempNews.slice(0, 15);
-        }
-
-        if (loopInterval === null) {
-            currentIndex = 0;
-            showNews();
-            loopInterval = setInterval(showNews, DISPLAY_DURATION);
         }
     }
 
@@ -379,13 +376,10 @@
             elImage.src = currentNews.image;
             elCategory.textContent = currentNews.category;
             elSource.textContent = "Fonte: " + currentNews.source;
-            
-            const now = new Date();
-            elDate.textContent = `Oggi alle ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            
+            elDate.textContent = formatFriendlyDate(currentNews.pubDate);
             elTitle.textContent = currentNews.title;
             
-            // Genera il QR code che punta ESATTAMENTE al link del singolo articolo
+            // Genera il QR code puntato ESATTAMENTE al link del singolo articolo
             elQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentNews.link)}`;
 
             let len = currentNews.title.length;
@@ -408,10 +402,15 @@
         }, 800); 
     }
 
-    // Parte subito con la riserva e avvia lo scaricamento in tempo reale delle singole notizie
+    // Parte subito mostrando la schermata e in parallelo scarica le notizie fresche dal web
     showNews();
     loopInterval = setInterval(showNews, DISPLAY_DURATION);
-    fetchLiveNews();
+
+    fetchLiveNews().then(() => {
+        currentIndex = 0; // Riavvia il giro con le notizie fresche appena scaricate
+    });
+    
+    // Aggiorna le notizie ogni 30 minuti
     setInterval(fetchLiveNews, 1800000);
 </script>
 
